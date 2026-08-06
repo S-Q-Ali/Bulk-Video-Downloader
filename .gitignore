@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Virtual environment
+source/venv/
+
+# PyInstaller build artifacts
+source/build/
+source/dist/
+*.spec
+_internal/
+*.exe_extracted/
+
+# Standalone built executables (release artifacts)
+/*.exe
+
+# Old deployments / backups
+*.old
+unins000.exe
+
+# OS
+Thumbs.db
+Desktop.ini
