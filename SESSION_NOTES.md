@@ -131,21 +131,34 @@ $env:QT_QPA_PLATFORM="offscreen"   # optional for headless
 
 ## 9. Next steps (in-flight)
 
-1. **Installer (approved plan, NOT yet executed):**
-   - Install Inno Setup 6: `winget install --id JRSoftware.InnoSetup -e --accept-package-agreements --accept-source-agreements`
-   - Write `installer.iss`: per-user install
-     (`{localappdata}\Programs\Q-S-Ali Media Downloader`, `PrivilegesRequired=lowest`),
-     files = `Q-S-Ali Media Downloader.exe` + `_internal\**` + bundled
-     `bin\ffmpeg.exe` (staged copy from the winget ffmpeg path into
-     `release\staging\`); fresh AppId GUID; lzma2/ultra64; output
-     `release\Q-S-Ali-Media-Downloader-Setup-2.0.0.exe`.
-   - Build with ISCC; silent-install test to a temp dir; verify installed
-     EXE launches and `bin\ffmpeg.exe` is found; uninstall to clean up.
-   - Add `release/` to `.gitignore`; commit `installer.iss`.
-   - Publish GitHub Release `v2.0.0` via REST API
-     (`POST /repos/S-Q-Ali/Bulk-Video-Downloader/releases`) + upload the
-     setup EXE. Fallback if token lacks scope: manual upload by user.
-2. **Repo professionalization:** see `REPO_IMPROVEMENT_PLAN.md`.
+1. **Installer — DONE (2026-08-06):**
+   - Inno Setup 6.7.3 installed per-user at
+     `C:\Users\MuslimQasim\AppData\Local\Programs\Inno Setup 6\ISCC.exe`.
+   - `release\installer.iss` written and compiled →
+     `release\Q-S-Ali-Media-Downloader-Setup-2.0.0.exe` (95.2 MB, lzma2/ultra64,
+     ~216 s build). Per-user install (`{localappdata}\Programs\Q-S-Ali Media
+     Downloader`, `PrivilegesRequired=lowest`), AppId
+     `{03d871b7-5dd8-4e41-849b-47a0b7c08c87}`, bundles `bin\ffmpeg.exe`
+     (staged from the winget Gyan.FFmpeg path to `release\staging\bin\`).
+   - Silent-install test to a temp dir passed: EXE launches and stays running,
+     `bin\ffmpeg.exe` runs (8.1.2), uninstaller removes everything cleanly.
+   - `.gitignore` now has `release/*` with `!release/installer.iss`.
+   - Git: `8620b84` "docs: add session notes and repo improvement plan; add
+     Inno installer script" (commits SESSION_NOTES.md, REPO_IMPROVEMENT_PLAN.md,
+     installer.iss, .gitignore). Pushed to origin.
+   - **GitHub Release v2.0.0 PUBLISHED** (id 366453596):
+     https://github.com/S-Q-Ali/Bulk-Video-Downloader/releases/tag/v2.0.0
+     - Tag `v2.0.0` auto-created at master tip (`8620b84`).
+     - Asset `Q-S-Ali-Media-Downloader-Setup-2.0.0.exe` (asset id 504383381)
+       verified downloadable (HTTP 200, 99,801,526 bytes). SHA-256 is in the
+       release body.
+     - Token flow that worked: `"protocol=https`nhost=github.com`n`n" |
+       git credential fill` → `password=` = 40-char PAT with full write scope;
+       POST /releases + curl.exe upload to uploads.github.com. Never echo the
+       token in output.
+2. **Repo professionalization:** next — start Phase A of
+   `REPO_IMPROVEMENT_PLAN.md` (cleanup old artifacts, restructure to `src/`,
+   README/LICENSE, CI).
 3. **Optional cleanup:** delete `_internal.old`, `Anas Media Downloader.exe.old`,
    `Anas Media Downloader.exe_extracted`, old `.spec` files once the new
    installer is verified.
@@ -174,3 +187,5 @@ $env:QT_QPA_PLATFORM="offscreen"   # optional for headless
 | 2026-08-06 | curl_cffi pinned to 0.15.0 to restore impersonation |
 | 2026-08-06 | YouTube support: playlists/channels auto-expand in background; native yt-dlp formats; no TikTok impersonation for YouTube |
 | 2026-08-06 | Installer: per-user (no admin), bundle ffmpeg.exe, publish GitHub Release v2.0.0 |
+| 2026-08-06 | Installed Inno Setup 6.7.3 (per-user winget); built 95.2 MB installer; silent-install/uninstall test passed |
+| 2026-08-06 | Published GitHub Release v2.0.0 with setup EXE asset (S-Q-Ali/Bulk-Video-Downloader) |
