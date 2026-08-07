@@ -20,6 +20,10 @@ _internal/
 *.old
 unins000.exe
 
+# Release build output (setup EXE, ffmpeg staging)
+release/*
+!release/installer.iss
+
 # OS
 Thumbs.db
 Desktop.ini
