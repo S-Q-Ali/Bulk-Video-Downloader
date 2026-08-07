@@ -61,13 +61,18 @@ Root:
 - `_internal.old\`, `Anas Media Downloader.exe.old`, `Anas Media Downloader.exe_extracted\` — old-brand backups/artifacts (safe to delete once confirmed).
 - `.gitignore` — excludes `source/venv`, `source/build`, `source/dist`, `*.spec`, `_internal/`, `*.exe_extracted/`, `/*.exe`, `*.old`, `unins000.exe`.
 
-`source/` (tracked source):
-- `main.py` — PySide6 GUI: `MainWindow`, `Job`, `JobCard`, `Chip`, rail/workspace/footer builders, `glyph_icon`, `shield_pixmap`, `resource/storage_dir/queue_file`, `main()`. Constants: `ORG='S-Q-Ali'`, `VERSION='2.0.0'`, `SETTINGS_VERSION='2.0'`, `MAX_SAVED_QUEUE=500`, `NOTICE`, `SOCIALS` (GitHub/LinkedIn).
-- `engine.py` — download engine: `DownloadThread` (worker pool, inline retries, passes), `AccountFetchThread`, `YouTubeFetchThread`, `impersonate_target`/`impersonation_summary`, URL helpers (`is_tiktok_url`, `is_profile_url`, `is_youtube_url`, `is_youtube_playlist_url`, `is_youtube_channel_url`, `platform_of`), `QUALITY_OPTIONS`, `DELAY_PRESETS`, `RETRY_PASSES`, `PARALLEL_OPTIONS`, `sanitize_filename`, `find_ffmpeg`, `default_output_dir`, `tidy_error`, `is_permanent`. `APP_NAME='Q-S-Ali Media Downloader'`.
-- `theme.py` — `C` palette dict, `STATUS_COLORS`, `STYLESHEET` (dark + cyan accent).
-- `licensing.py` — LEGACY, unused by the app. Keep only as history.
-- `icon.ico` — app/EXE icon (generated 2026-08-06).
-- `Anas Media Downloader.spec`, `Q-S-Ali Media Downloader.spec` — PyInstaller build artifacts (gitignored).
+`src/` (tracked source, package layout):
+- `qsali_media_downloader/__init__.py` — `__version__ = '2.0.0'`.
+- `qsali_media_downloader/__main__.py` — entry: `python -m qsali_media_downloader`.
+- `qsali_media_downloader/app.py` — `main()` bootstrap (QApplication, stylesheet, window icon).
+- `qsali_media_downloader/engine.py` — download engine: `DownloadThread` (worker pool, inline retries, passes), `AccountFetchThread`, `YouTubeFetchThread`, `impersonate_target`/`impersonation_summary`, URL helpers (`is_tiktok_url`, `is_profile_url`, `is_youtube_url`, `is_youtube_playlist_url`, `is_youtube_channel_url`, `platform_of`), `QUALITY_OPTIONS`, `DELAY_PRESETS`, `RETRY_PASSES`, `PARALLEL_OPTIONS`, `sanitize_filename`, `find_ffmpeg`, `default_output_dir`, `tidy_error`, `is_permanent`. `APP_NAME='Q-S-Ali Media Downloader'`.
+- `qsali_media_downloader/theme.py` — `C` palette dict, `STATUS_COLORS`, `STYLESHEET` (dark + cyan accent).
+- `qsali_media_downloader/ui/main_window.py` — `MainWindow`, path helpers (`resource`, `storage_dir`, `queue_file`), constants `ORG='S-Q-Ali'`, `VERSION='2.0.0'`, `SETTINGS_VERSION='2.0'`, `MAX_SAVED_QUEUE=500`, `NOTICE`, `SOCIALS`.
+- `qsali_media_downloader/ui/widgets.py` — `Job`, `JobCard`, `Chip`, `shorten`, `glyph_icon`, `shield_pixmap`.
+- `qsali_media_downloader/resources/icon.ico` — app/EXE icon (generated 2026-08-06).
+- `legacy/licensing.py` — LEGACY license tooling, unused by the app; kept as history.
+- Root: `pyproject.toml`, `requirements.txt`, `requirements-dev.txt`.
+- PyInstaller artifacts: built with `--paths src` and `--workpath source/build --distpath source/dist` (both gitignored). No spec file kept.
 
 Runtime storage (not in repo): `%LOCALAPPDATA%\Q-S-Ali Media Downloader\storage\` → `queue.json` + `downloads\`. QSettings org `S-Q-Ali`, app `Q-S-Ali Media Downloader` (registry `HKCU\Software\S-Q-Ali\Q-S-Ali Media Downloader`).
 
@@ -108,23 +113,30 @@ Runtime storage (not in repo): `%LOCALAPPDATA%\Q-S-Ali Media Downloader\storage\
 ## 7. Build & run commands
 
 ```powershell
-# dev run (from source\)
-$env:QT_QPA_PLATFORM="offscreen"   # optional for headless
-& ".\venv\Scripts\python.exe" -B main.py
+# dev run (from repo root)
+$env:PYTHONPATH = "E:\Web App\Anas Media Downloader\src"
+$env:QT_QPA_PLATFORM = "offscreen"   # optional for headless
+& ".\source\venv\Scripts\python.exe" -B -m qsali_media_downloader
 
-# rebuild EXE (source\)
-& ".\venv\Scripts\pyinstaller.exe" --noconfirm --clean --onedir --windowed `
-  --name "Q-S-Ali Media Downloader" --icon "icon.ico" --add-data "icon.ico;." main.py
-# output: source\dist\Q-S-Ali Media Downloader\{exe, _internal}
+# rebuild EXE (repo root)
+& ".\source\venv\Scripts\pyinstaller.exe" --noconfirm --clean --onedir --windowed `
+  --name "Q-S-Ali Media Downloader" `
+  --icon "src\qsali_media_downloader\resources\icon.ico" `
+  --add-data "src\qsali_media_downloader\resources\icon.ico;." `
+  --paths "src" --workpath "source\build\pkg" --distpath "source\dist" `
+  "src\qsali_media_downloader\__main__.py"
+# output: source\dist\Q-S-Ali Media Downloader\{exe, _internal} → copy to release\portable
 
-# quick import/health check (source\)
-& ".\venv\Scripts\python.exe" -B -c "import engine, main; print('OK')"
+# quick import/health check
+& ".\source\venv\Scripts\python.exe" -B -c "import sys; sys.path.insert(0,'src'); import qsali_media_downloader; print('OK')"
 ```
 
 ## 8. Git state
 
 - Branch `master`; remote `origin` → https://github.com/S-Q-Ali/Bulk-Video-Downloader.git
-- Commit `6da50b4` — "Rebrand to Q-S-Ali Media Downloader, remove license gate, add YouTube support"
+- History: `6da50b4` rebrand+YouTube+open source → `8620b84` docs+installer script →
+  `7084dc8` portable relocation → `d884fe4` docs → `bf1b220` package restructure.
+  Only `6da50b4` and `8620b84` pushed so far; later commits local.
 - Push worked using a cached GitHub credential (VS Code/Git Credential Manager).
   No `gh` CLI, no SSH keys. For API calls, retrieve the token with
   `git credential fill` (host github.com) or ask the user for a PAT.
@@ -156,12 +168,24 @@ $env:QT_QPA_PLATFORM="offscreen"   # optional for headless
        git credential fill` → `password=` = 40-char PAT with full write scope;
        POST /releases + curl.exe upload to uploads.github.com. Never echo the
        token in output.
-2. **Repo professionalization:** next — start Phase A of
-   `REPO_IMPROVEMENT_PLAN.md` (cleanup old artifacts, restructure to `src/`,
-   README/LICENSE, CI).
-3. **Optional cleanup:** delete `_internal.old`, `Anas Media Downloader.exe.old`,
-   `Anas Media Downloader.exe_extracted`, old `.spec` files once the new
-   installer is verified.
+2. **Repo professionalization — Phase A & B DONE (2026-08-06):**
+   - Phase A (hygiene): deleted `_internal.old`, `Anas Media Downloader.exe.old`,
+     `Anas Media Downloader.exe_extracted`, `source\Anas Media Downloader.spec`;
+     moved the deployed build to `release\portable\`; installer.iss now sources
+     from `release\portable\`. Commit `7084dc8`.
+   - Phase B (package restructure): `src\qsali_media_downloader\` package with
+     `app.py`, `engine.py`, `theme.py`, `ui\main_window.py`, `ui\widgets.py`,
+     `__main__.py`, `__init__.py`, `resources\icon.ico`; root
+     `pyproject.toml`, `requirements.txt`, `requirements-dev.txt`;
+     `legacy\licensing.py`. Verified: engine checks, offscreen GUI smoke,
+     impersonation, frozen EXE rebuilt from package and running, installer
+     recompiled + install/uninstall round-trip clean. Commit `bf1b220`.
+   - NOTE: `source\` still exists locally ONLY as the venv host
+     (`source\venv`) + gitignored PyInstaller `source\build`, `source\dist`.
+   - Next: Phase C (tests + ruff + CI), then Phase D (README/LICENSE/docs),
+     then Phase E (release automation). Open questions: license (MIT?),
+     keep `legacy/licensing.py`?, rename `master`→`main`?
+3. **Optional cleanup — DONE:** old artifacts removed in Phase A.
 
 ## 10. Known issues / caveats
 
@@ -189,3 +213,4 @@ $env:QT_QPA_PLATFORM="offscreen"   # optional for headless
 | 2026-08-06 | Installer: per-user (no admin), bundle ffmpeg.exe, publish GitHub Release v2.0.0 |
 | 2026-08-06 | Installed Inno Setup 6.7.3 (per-user winget); built 95.2 MB installer; silent-install/uninstall test passed |
 | 2026-08-06 | Published GitHub Release v2.0.0 with setup EXE asset (S-Q-Ali/Bulk-Video-Downloader) |
+| 2026-08-06 | Repo professionalization Phase A+B: cleaned old artifacts, portable build → release/portable, source → src/qsali_media_downloader package |

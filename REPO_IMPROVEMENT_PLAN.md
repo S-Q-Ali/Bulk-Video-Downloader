@@ -67,24 +67,25 @@ Bulk-Video-Downloader/
 
 ## Phased execution
 
-### Phase A — Hygiene (safe, do now)
-1. Move/remove old artifacts from root: delete `_internal.old`,
-   `Anas Media Downloader.exe.old`, `Anas Media Downloader.exe_extracted`,
-   stale `*.spec` once the installer is confirmed.
-2. Keep deployed EXE + `_internal` OUT of git (already ignored); optionally
-   move them to `release/portable/` so the root is clean.
-3. Commit this plan + SESSION_NOTES.md.
+### Phase A — Hygiene ✅ DONE (2026-08-06)
+1. Deleted `_internal.old`, `Anas Media Downloader.exe.old`,
+   `Anas Media Downloader.exe_extracted`, stale `source\Anas Media Downloader.spec`.
+2. Deployed EXE + `_internal` moved to `release/portable/`; installer.iss
+   re-pointed to `release\portable\` and recompiled + re-verified.
+3. Plan + SESSION_NOTES.md committed (`8620b84`).
 
-### Phase B — Package restructure (mechanical, low risk)
-4. Create `src/qsali_media_downloader/`; move `engine.py`, `theme.py` as-is;
-   split `main.py` into `app.py` + `ui/main_window.py` + `ui/widgets.py`
-   (pure refactor; keep behaviour identical).
-5. Make imports absolute (`from qsali_media_downloader.engine import ...`).
-6. Add `pyproject.toml` (setuptools or hatchling; `__version__`),
-   `requirements.txt` (PySide6, yt-dlp, curl_cffi==0.15.0),
-   `requirements-dev.txt` (pyinstaller, pytest, ruff).
-7. Add `__main__.py` so devs run `python -m qsali_media_downloader`.
-8. Run the full verification suite after the move (see SESSION_NOTES §6).
+### Phase B — Package restructure ✅ DONE (2026-08-06)
+4. Created `src/qsali_media_downloader/`; `engine.py`, `theme.py` moved as-is;
+   `main.py` split into `app.py` + `ui/main_window.py` + `ui/widgets.py`
+   (behaviour-identical; verified by offscreen smoke + engine checks).
+5. Absolute imports (`from qsali_media_downloader.engine import ...`).
+6. Added `pyproject.toml`, `requirements.txt`, `requirements-dev.txt`.
+7. Added `__main__.py` → `python -m qsali_media_downloader`.
+8. Full verification passed; EXE rebuilt from the package; installer
+   recompiled (icon path updated to `src\...\resources\icon.ico`) and
+   install/uninstall round-trip verified. Commit `bf1b220`.
+   - NOTE: `legacy/licensing.py` replaces `source/licensing.py`.
+   - Installer script lives at `release/installer.iss` (not `packaging/`).
 
 ### Phase C — Tests & lint
 9. Add `tests/` (URL detection, engine opt-building, theme invariants,
