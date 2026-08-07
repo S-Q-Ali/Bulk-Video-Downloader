@@ -13,8 +13,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from qsali_media_downloader.engine import is_youtube_url
-from qsali_media_downloader.theme import STATUS_COLORS, C
+from s_q_ali_media_downloader.engine import is_youtube_url
+from s_q_ali_media_downloader.theme import STATUS_COLORS, C
 
 
 def shorten(text, limit=95):

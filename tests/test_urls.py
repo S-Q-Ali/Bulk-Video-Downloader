@@ -1,6 +1,6 @@
 """URL classification and account normalisation."""
 
-from qsali_media_downloader.engine import (
+from s_q_ali_media_downloader.engine import (
     is_profile_url,
     is_tiktok_url,
     is_youtube_channel_url,

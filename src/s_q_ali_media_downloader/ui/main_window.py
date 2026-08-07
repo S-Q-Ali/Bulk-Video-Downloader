@@ -1,4 +1,4 @@
-"""Main window for Q-S-Ali Media Downloader."""
+"""Main window for S-Q-Ali Media Downloader."""
 
 import json
 import os
@@ -25,7 +25,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from qsali_media_downloader.engine import (
+from s_q_ali_media_downloader.engine import (
     ACCOUNT_LIMITS,
     APP_NAME,
     DEFAULT_DELAY,
@@ -49,8 +49,8 @@ from qsali_media_downloader.engine import (
     is_youtube_url,
     platform_of,
 )
-from qsali_media_downloader.theme import STATUS_COLORS, C
-from qsali_media_downloader.ui.widgets import Chip, Job, JobCard, glyph_icon, shield_pixmap
+from s_q_ali_media_downloader.theme import STATUS_COLORS, C
+from s_q_ali_media_downloader.ui.widgets import Chip, Job, JobCard, glyph_icon, shield_pixmap
 
 ORG = 'S-Q-Ali'
 VERSION = '2.0.0'

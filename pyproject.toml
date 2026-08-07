@@ -3,7 +3,7 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "qsali-media-downloader"
+name = "s-q-ali-media-downloader"
 version = "2.0.0"
 description = "Bulk-download TikTok and YouTube videos with a queue-based desktop app."
 readme = "README.md"
@@ -28,7 +28,7 @@ dev = [
 Homepage = "https://github.com/S-Q-Ali/Bulk-Video-Downloader"
 
 [project.scripts]
-qsali-media-downloader = "qsali_media_downloader.app:main"
+s-q-ali-media-downloader = "s_q_ali_media_downloader.app:main"
 
 [tool.setuptools]
 package-dir = { "" = "src" }
@@ -37,7 +37,7 @@ package-dir = { "" = "src" }
 where = ["src"]
 
 [tool.setuptools.package-data]
-qsali_media_downloader = ["resources/*.ico"]
+s_q_ali_media_downloader = ["resources/*.ico"]
 
 [tool.ruff]
 line-length = 100

@@ -1,6 +1,6 @@
 """Theme palette and stylesheet invariants."""
 
-from qsali_media_downloader.theme import STATUS_COLORS, STYLESHEET, C
+from s_q_ali_media_downloader.theme import STATUS_COLORS, STYLESHEET, C
 
 REQUIRED_KEYS = ('bg', 'panel', 'raised', 'border', 'text', 'muted', 'faint',
                  'accent', 'accent_hi', 'amber', 'done', 'failed', 'queued',

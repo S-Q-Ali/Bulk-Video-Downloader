@@ -4,14 +4,14 @@ import os
 
 from PySide6.QtWidgets import QLabel, QPushButton
 
-from qsali_media_downloader.ui.main_window import MainWindow, resource
-from qsali_media_downloader.ui.widgets import Job
+from s_q_ali_media_downloader.ui.main_window import MainWindow, resource
+from s_q_ali_media_downloader.ui.widgets import Job
 
 
 def test_main_window_smoke(qapp, isolated_appdata):
     window = MainWindow()
     title = window.windowTitle()
-    assert 'Q-S-Ali Media Downloader' in title
+    assert 'S-Q-Ali Media Downloader' in title
     assert '2.0.0' in title
 
     labels = [label.text() for label in window.findChildren(QLabel)]

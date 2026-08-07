@@ -23,10 +23,10 @@ Everything must pass before a PR is merged. CI runs the same checks on Windows.
 
 ## Code layout
 
-- `src/qsali_media_downloader/engine.py` — download engine and URL helpers (no UI code).
-- `src/qsali_media_downloader/theme.py` — palette and stylesheet.
-- `src/qsali_media_downloader/app.py` — application entry point.
-- `src/qsali_media_downloader/ui/` — `main_window.py` (window + wiring) and `widgets.py` (cards, chips, drawing helpers).
+- `src/s_q_ali_media_downloader/engine.py` — download engine and URL helpers (no UI code).
+- `src/s_q_ali_media_downloader/theme.py` — palette and stylesheet.
+- `src/s_q_ali_media_downloader/app.py` — application entry point.
+- `src/s_q_ali_media_downloader/ui/` — `main_window.py` (window + wiring) and `widgets.py` (cards, chips, drawing helpers).
 - `tests/` — pytest suite. Keep it green; add tests alongside new behaviour.
 
 ## Guidelines

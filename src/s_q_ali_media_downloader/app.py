@@ -1,4 +1,4 @@
-"""Application entry point for Q-S-Ali Media Downloader."""
+"""Application entry point for S-Q-Ali Media Downloader."""
 
 import os
 import sys
@@ -7,9 +7,9 @@ from PySide6.QtCore import QTimer
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication
 
-from qsali_media_downloader.engine import APP_NAME
-from qsali_media_downloader.theme import STYLESHEET
-from qsali_media_downloader.ui.main_window import ORG, MainWindow, resource
+from s_q_ali_media_downloader.engine import APP_NAME
+from s_q_ali_media_downloader.theme import STYLESHEET
+from s_q_ali_media_downloader.ui.main_window import ORG, MainWindow, resource
 
 
 def main():

@@ -2,7 +2,7 @@
 
 import pytest
 
-from qsali_media_downloader.engine import (
+from s_q_ali_media_downloader.engine import (
     DEFAULT_DELAY,
     DELAY_PRESETS,
     QUALITY_OPTIONS,

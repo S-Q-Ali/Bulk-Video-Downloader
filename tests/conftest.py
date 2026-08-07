@@ -18,7 +18,7 @@ def qapp():
 @pytest.fixture(scope='function')
 def isolated_appdata():
     old = os.environ.get('LOCALAPPDATA')
-    os.environ['LOCALAPPDATA'] = tempfile.mkdtemp(prefix='qsali_test_')
+    os.environ['LOCALAPPDATA'] = tempfile.mkdtemp(prefix='sqali_test_')
     yield
     if old is None:
         os.environ.pop('LOCALAPPDATA', None)

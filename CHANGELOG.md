@@ -7,7 +7,7 @@ All notable changes are documented here. The format follows
 
 ### Added
 - Open source release under the MIT license; activation keys removed entirely.
-- Rebranded to **Q-S-Ali Media Downloader** with a new icon and dark cyan theme.
+- Rebranded to **S-Q-Ali Media Downloader** with a new icon and dark cyan theme.
 - YouTube support alongside TikTok — playlists and channels expand into
   individual videos automatically in the background.
 - Per-platform download options (TikTok uses Chrome impersonation; YouTube
@@ -16,7 +16,7 @@ All notable changes are documented here. The format follows
 - Per-user Inno Setup installer (no admin required) that bundles ffmpeg.
 
 ### Changed
-- Source reorganized into a proper `src/qsali_media_downloader` package.
+- Source reorganized into a proper `src/s_q_ali_media_downloader` package.
 - Added pytest suite, ruff linting, and a GitHub Actions CI pipeline.
 
 ### Fixed

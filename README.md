@@ -1,4 +1,4 @@
-# Q-S-Ali Media Downloader
+# S-Q-Ali Media Downloader
 
 Bulk-download **TikTok** and **YouTube** videos with a clean, queue-based desktop app. Open source, free, and no activation keys — ever.
 
@@ -26,7 +26,7 @@ Bulk-download **TikTok** and **YouTube** videos with a clean, queue-based deskto
 
 ### Installer (recommended)
 
-Download `Q-S-Ali-Media-Downloader-Setup-2.0.0.exe` from the [latest release](https://github.com/S-Q-Ali/Bulk-Video-Downloader/releases).
+Download `S-Q-Ali-Media-Downloader-Setup-2.0.0.exe` from the [latest release](https://github.com/S-Q-Ali/Bulk-Video-Downloader/releases).
 
 - Per-user install — **no administrator rights needed**.
 - Bundles `ffmpeg.exe`, so audio-only extraction and format merging work out of the box.
@@ -34,7 +34,7 @@ Download `Q-S-Ali-Media-Downloader-Setup-2.0.0.exe` from the [latest release](ht
 
 ### Portable
 
-The release also ships a portable folder — just unzip and run `Q-S-Ali Media Downloader.exe`. It needs the `_internal` folder to stay next to it. System ffmpeg is used if present on `PATH`.
+The release also ships a portable folder — just unzip and run `S-Q-Ali Media Downloader.exe`. It needs the `_internal` folder to stay next to it. System ffmpeg is used if present on `PATH`.
 
 ## Build from source
 
@@ -49,10 +49,10 @@ python -m venv .venv
 pip install -r requirements.txt
 
 # run
-python -m qsali_media_downloader      # from the repo root (src/ is on the package path)
+python -m s_q_ali_media_downloader      # from the repo root (src/ is on the package path)
 # or
 pip install -e .
-qsali-media-downloader
+s-q-ali-media-downloader
 
 # test + lint
 pip install -r requirements-dev.txt
@@ -61,11 +61,11 @@ ruff check src tests
 
 # build a standalone EXE (onedir, windowed)
 pyinstaller --noconfirm --clean --onedir --windowed `
-  --name "Q-S-Ali Media Downloader" `
-  --icon "src\qsali_media_downloader\resources\icon.ico" `
-  --add-data "src\qsali_media_downloader\resources\icon.ico;." `
+  --name "S-Q-Ali Media Downloader" `
+  --icon "src\s_q_ali_media_downloader\resources\icon.ico" `
+  --add-data "src\s_q_ali_media_downloader\resources\icon.ico;." `
   --paths "src" `
-  "src\qsali_media_downloader\__main__.py"
+  "src\s_q_ali_media_downloader\__main__.py"
 ```
 
 ## How downloads work
