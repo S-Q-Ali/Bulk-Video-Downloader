@@ -7,20 +7,49 @@ import sys
 from PySide6.QtCore import QSettings, QSize, Qt, QUrl
 from PySide6.QtGui import QColor, QDesktopServices
 from PySide6.QtWidgets import (
-    QButtonGroup, QCheckBox, QComboBox, QFileDialog, QFrame, QHBoxLayout, QLabel,
-    QLineEdit, QMainWindow, QMessageBox, QPlainTextEdit, QPushButton, QScrollArea,
-    QStackedWidget, QVBoxLayout, QWidget,
+    QButtonGroup,
+    QCheckBox,
+    QComboBox,
+    QFileDialog,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMainWindow,
+    QMessageBox,
+    QPlainTextEdit,
+    QPushButton,
+    QScrollArea,
+    QStackedWidget,
+    QVBoxLayout,
+    QWidget,
 )
 
 from qsali_media_downloader.engine import (
-    ACCOUNT_LIMITS, APP_NAME, DEFAULT_DELAY, DEFAULT_PARALLEL, DEFAULT_PASSES,
-    DELAY_PRESETS, INLINE_RETRIES, MAX_ACCOUNT_VIDEOS, PARALLEL_OPTIONS,
-    QUALITY_OPTIONS, RETRY_PASSES, AccountFetchThread, DownloadThread,
-    YouTubeFetchThread, default_output_dir, impersonation_summary, is_profile_url,
-    is_tiktok_url, is_youtube_channel_url, is_youtube_playlist_url, is_youtube_url,
+    ACCOUNT_LIMITS,
+    APP_NAME,
+    DEFAULT_DELAY,
+    DEFAULT_PARALLEL,
+    DEFAULT_PASSES,
+    DELAY_PRESETS,
+    INLINE_RETRIES,
+    MAX_ACCOUNT_VIDEOS,
+    PARALLEL_OPTIONS,
+    QUALITY_OPTIONS,
+    RETRY_PASSES,
+    AccountFetchThread,
+    DownloadThread,
+    YouTubeFetchThread,
+    default_output_dir,
+    impersonation_summary,
+    is_profile_url,
+    is_tiktok_url,
+    is_youtube_channel_url,
+    is_youtube_playlist_url,
+    is_youtube_url,
     platform_of,
 )
-from qsali_media_downloader.theme import C, STATUS_COLORS
+from qsali_media_downloader.theme import STATUS_COLORS, C
 from qsali_media_downloader.ui.widgets import Chip, Job, JobCard, glyph_icon, shield_pixmap
 
 ORG = 'S-Q-Ali'

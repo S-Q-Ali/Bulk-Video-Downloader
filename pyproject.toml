@@ -39,5 +39,11 @@ qsali_media_downloader = ["resources/*.ico"]
 line-length = 100
 target-version = "py310"
 
+[tool.ruff.lint]
+# Broad exceptions are intentional in the download engine: yt-dlp raises a
+# wide, poorly-documented set of error types that all funnel into tidy_error().
+ignore = ["BLE001"]
+
 [tool.pytest.ini_options]
 addopts = "-q"
+pythonpath = ["src"]

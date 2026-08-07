@@ -24,6 +24,12 @@ unins000.exe
 release/*
 !release/installer.iss
 
+# Legacy activation tooling (contains old product-key secret) — keep local
+legacy/
+
+# Session continuity docs (local working notes)
+SESSION_NOTES.md
+
 # OS
 Thumbs.db
 Desktop.ini

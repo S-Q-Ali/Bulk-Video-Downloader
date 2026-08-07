@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Lint
+        run: ruff check src tests
+
+      - name: Test (offscreen GUI)
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: pytest
+
+      - name: Build EXE
+        run: |
+          pyinstaller --noconfirm --clean --onedir --windowed `
+            --name "Q-S-Ali Media Downloader" `
+            --icon "src\qsali_media_downloader\resources\icon.ico" `
+            --add-data "src\qsali_media_downloader\resources\icon.ico;." `
+            --paths "src" --workpath "build\ci" --distpath "dist" `
+            "src\qsali_media_downloader\__main__.py"
+          Write-Output ("EXE size MB: {0:N1}" -f ((Get-Item "dist\Q-S-Ali Media Downloader\Q-S-Ali Media Downloader.exe").Length / 1MB))
+
+      - name: Upload portable build
+        uses: actions/upload-artifact@v4
+        with:
+          name: portable-build
+          path: dist\Q-S-Ali Media Downloader

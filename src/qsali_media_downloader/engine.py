@@ -18,15 +18,14 @@ the retries and fail immediately.
 """
 
 import os
-import re
-import time
 import random
+import re
 import threading
+import time
 import unicodedata
 
-from PySide6.QtCore import QThread, Signal
-
 import yt_dlp
+from PySide6.QtCore import QThread, Signal
 
 try:
     from yt_dlp.networking.impersonate import ImpersonateTarget
@@ -124,7 +123,7 @@ def impersonate_target():
         if best is not None:
             result = (best, str(best))
     except Exception as exc:
-        result = (None, 'unavailable ({exc})')
+        result = (None, f'unavailable ({exc})')
     _IMPERSONATE_CACHE = result
     return result
 

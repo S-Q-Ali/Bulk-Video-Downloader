@@ -3,11 +3,18 @@
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QFont, QIcon, QPainter, QPainterPath, QPixmap
 from PySide6.QtWidgets import (
-    QCheckBox, QFrame, QHBoxLayout, QLabel, QProgressBar, QSizePolicy, QVBoxLayout, QWidget,
+    QCheckBox,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QProgressBar,
+    QSizePolicy,
+    QVBoxLayout,
+    QWidget,
 )
 
 from qsali_media_downloader.engine import is_youtube_url
-from qsali_media_downloader.theme import C, STATUS_COLORS
+from qsali_media_downloader.theme import STATUS_COLORS, C
 
 
 def shorten(text, limit=95):

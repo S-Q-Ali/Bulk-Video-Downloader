@@ -87,10 +87,16 @@ Bulk-Video-Downloader/
    - NOTE: `legacy/licensing.py` replaces `source/licensing.py`.
    - Installer script lives at `release/installer.iss` (not `packaging/`).
 
-### Phase C — Tests & lint
-9. Add `tests/` (URL detection, engine opt-building, theme invariants,
-   offscreen GUI smoke). `conftest.py` sets `QT_QPA_PLATFORM=offscreen`.
-10. Configure ruff + a simple `ci.yml` (install deps → pytest → build EXE).
+### Phase C — Tests & lint ✅ DONE (2026-08-06)
+9. Added `tests/` (URL detection, engine helpers, theme invariants, offscreen
+   GUI smoke). `conftest.py` sets `QT_QPA_PLATFORM=offscreen` + temp
+   `LOCALAPPDATA`. `pyproject.toml` has `pythonpath = ["src"]`.
+10. ruff configured (`BLE001` intentionally ignored — download engine catches
+    broad yt-dlp errors by design). Fixed an existing bug in
+    `impersonate_target()` (missing f-string on the failure label).
+    `.github/workflows/ci.yml`: windows-latest, Python 3.12, ruff → pytest →
+    PyInstaller EXE → upload artifact.
+    - Verified locally: 25 tests pass, `ruff check src tests` clean.
 
 ### Phase D — Docs & community
 11. `README.md`: what it is, features, install (portable + installer),
