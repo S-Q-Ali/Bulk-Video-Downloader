@@ -98,11 +98,11 @@ Bulk-Video-Downloader/
     PyInstaller EXE → upload artifact.
     - Verified locally: 25 tests pass, `ruff check src tests` clean.
 
-### Phase D — Docs & community
-11. `README.md`: what it is, features, install (portable + installer),
-    build-from-source, tech stack, GitHub/LinkedIn links.
+### Phase D — Docs & community ✅ DONE (2026-08-06)
+11. `README.md` (features, install paths, build-from-source, tech stack, links).
 12. `LICENSE` (MIT), `CONTRIBUTING.md`, `CHANGELOG.md`, `SECURITY.md`.
-13. Issue/PR templates.
+13. Issue + PR templates under `.github/`.
+    - `pyproject.toml` now references `readme = "README.md"`.
 
 ### Phase E — Release automation
 14. `packaging/Q-S-Ali-Media-Downloader.spec` committed; a
