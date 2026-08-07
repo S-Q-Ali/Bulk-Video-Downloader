@@ -1,27 +1,27 @@
-"""Q-S-Ali Media Downloader — desktop front end."""
+"""Main window for Q-S-Ali Media Downloader."""
 
 import json
 import os
 import sys
 
-from PySide6.QtCore import Qt, QSettings, QTimer, QUrl, QSize
-from PySide6.QtGui import QIcon, QDesktopServices, QPixmap, QPainter, QColor, QFont, QPainterPath
+from PySide6.QtCore import QSettings, QSize, Qt, QUrl
+from PySide6.QtGui import QColor, QDesktopServices
 from PySide6.QtWidgets import (
-    QApplication, QMainWindow, QWidget, QFrame, QLabel, QLineEdit, QPlainTextEdit,
-    QComboBox, QPushButton, QCheckBox, QScrollArea, QVBoxLayout, QHBoxLayout,
-    QProgressBar, QFileDialog, QMessageBox, QSizePolicy, QStackedWidget,
-    QButtonGroup,
+    QButtonGroup, QCheckBox, QComboBox, QFileDialog, QFrame, QHBoxLayout, QLabel,
+    QLineEdit, QMainWindow, QMessageBox, QPlainTextEdit, QPushButton, QScrollArea,
+    QStackedWidget, QVBoxLayout, QWidget,
 )
 
-from engine import (
-    APP_NAME, QUALITY_OPTIONS, DELAY_PRESETS, DEFAULT_DELAY, RETRY_PASSES,
-    DEFAULT_PASSES, INLINE_RETRIES, PARALLEL_OPTIONS, DEFAULT_PARALLEL,
-    ACCOUNT_LIMITS, MAX_ACCOUNT_VIDEOS, DownloadThread, AccountFetchThread,
-    YouTubeFetchThread, default_output_dir, is_tiktok_url, is_profile_url,
-    is_youtube_url, is_youtube_playlist_url, is_youtube_channel_url,
-    platform_of, find_ffmpeg, impersonation_summary,
+from qsali_media_downloader.engine import (
+    ACCOUNT_LIMITS, APP_NAME, DEFAULT_DELAY, DEFAULT_PARALLEL, DEFAULT_PASSES,
+    DELAY_PRESETS, INLINE_RETRIES, MAX_ACCOUNT_VIDEOS, PARALLEL_OPTIONS,
+    QUALITY_OPTIONS, RETRY_PASSES, AccountFetchThread, DownloadThread,
+    YouTubeFetchThread, default_output_dir, impersonation_summary, is_profile_url,
+    is_tiktok_url, is_youtube_channel_url, is_youtube_playlist_url, is_youtube_url,
+    platform_of,
 )
-from theme import STYLESHEET, C, STATUS_COLORS
+from qsali_media_downloader.theme import C, STATUS_COLORS
+from qsali_media_downloader.ui.widgets import Chip, Job, JobCard, glyph_icon, shield_pixmap
 
 ORG = 'S-Q-Ali'
 VERSION = '2.0.0'
@@ -38,7 +38,14 @@ SOCIALS = [
 
 
 def resource(name):
-    base = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
+    base = getattr(sys, '_MEIPASS', None)
+    if base is None:
+        here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        for root in (here, os.path.join(here, 'resources')):
+            candidate = os.path.join(root, name)
+            if os.path.isfile(candidate):
+                return candidate
+        base = here
     return os.path.join(base, name)
 
 
@@ -49,201 +56,6 @@ def storage_dir():
 
 def queue_file():
     return os.path.join(storage_dir(), 'queue.json')
-
-
-def shorten(text, limit=95):
-    text = ' '.join((text or '').split())
-    if len(text) <= limit:
-        return text
-    return text[:limit - 1] + '…'
-
-
-def glyph_icon(glyph, size=18):
-    pm = QPixmap(size, size)
-    pm.fill(Qt.transparent)
-    painter = QPainter(pm)
-    painter.setRenderHint(QPainter.Antialiasing)
-    white = QColor('#FFFFFF')
-    if glyph == 'play':
-        painter.setPen(Qt.NoPen)
-        painter.setBrush(white)
-        path = QPainterPath()
-        path.moveTo(size * 0.3, size * 0.22)
-        path.lineTo(size * 0.8, size * 0.5)
-        path.lineTo(size * 0.3, size * 0.78)
-        path.closeSubpath()
-        painter.drawPath(path)
-    else:
-        font = QFont('Segoe UI')
-        font.setPixelSize(int(size * 0.78))
-        font.setBold(True)
-        painter.setFont(font)
-        painter.setPen(white)
-        painter.drawText(pm.rect(), Qt.AlignCenter, glyph)
-    painter.end()
-    return QIcon(pm)
-
-
-def shield_pixmap(size=15, colour='#FFB020'):
-    pm = QPixmap(size, size)
-    pm.fill(Qt.transparent)
-    painter = QPainter(pm)
-    painter.setRenderHint(QPainter.Antialiasing)
-    painter.setPen(Qt.NoPen)
-    painter.setBrush(QColor(colour))
-    path = QPainterPath()
-    path.moveTo(size * 0.5, size * 0.06)
-    path.lineTo(size * 0.9, size * 0.22)
-    path.lineTo(size * 0.9, size * 0.52)
-    path.lineTo(size * 0.5, size * 0.94)
-    path.lineTo(size * 0.1, size * 0.52)
-    path.lineTo(size * 0.1, size * 0.22)
-    path.closeSubpath()
-    painter.drawPath(path)
-    painter.end()
-    return pm
-
-
-class Job:
-    _next_uid = 1
-
-    def __init__(self, url):
-        self.uid = Job._next_uid
-        Job._next_uid += 1
-        self.url = url
-        self.title = ''
-        self.status = 'Queued'
-        self.percent = 0.0
-        self.size = '—'
-        self.speed = ''
-        self.error = ''
-        self.note = ''
-
-
-class JobCard(QFrame):
-
-    def __init__(self, job, parent=None):
-        super().__init__(parent)
-        self.job = job
-        self.setObjectName('Card')
-
-        outer = QHBoxLayout(self)
-        outer.setContentsMargins(0, 0, 14, 0)
-        outer.setSpacing(0)
-
-        self.spine = QFrame()
-        self.spine.setObjectName('Spine')
-        self.spine.setFixedWidth(3)
-        self.spine.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
-        outer.addWidget(self.spine)
-
-        pick = QWidget()
-        pick_lay = QHBoxLayout(pick)
-        pick_lay.setContentsMargins(12, 0, 6, 0)
-        self.check = QCheckBox()
-        pick_lay.addWidget(self.check, 0, Qt.AlignVCenter)
-        outer.addWidget(pick)
-
-        body = QVBoxLayout()
-        body.setContentsMargins(0, 11, 0, 11)
-        body.setSpacing(6)
-        outer.addLayout(body, 1)
-
-        top = QHBoxLayout()
-        top.setSpacing(9)
-
-        self.badge = QLabel('YOUTUBE' if is_youtube_url(job.url) else 'TIKTOK')
-        self.badge.setProperty('role', 'badge')
-        top.addWidget(self.badge, 0, Qt.AlignVCenter)
-
-        self.title = QLabel()
-        self.title.setProperty('role', 'cardTitle')
-        top.addWidget(self.title, 1)
-
-        self.status = QLabel()
-        self.status.setProperty('role', 'status')
-        top.addWidget(self.status, 0, Qt.AlignVCenter)
-        body.addLayout(top)
-
-        self.url = QLabel()
-        self.url.setProperty('role', 'cardUrl')
-        body.addWidget(self.url)
-
-        bottom = QHBoxLayout()
-        bottom.setSpacing(12)
-
-        self.bar = QProgressBar()
-        self.bar.setRange(0, 100)
-        self.bar.setTextVisible(False)
-        self.bar.setFixedHeight(6)
-        bottom.addWidget(self.bar, 1)
-
-        self.meta = QLabel()
-        self.meta.setProperty('role', 'meta')
-        self.meta.setMinimumWidth(190)
-        self.meta.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        bottom.addWidget(self.meta, 0)
-        body.addLayout(bottom)
-
-        self.error = QLabel()
-        self.error.setProperty('role', 'error')
-        self.error.setWordWrap(True)
-        self.error.hide()
-        body.addWidget(self.error)
-
-        self.refresh()
-
-    def refresh(self):
-        j = self.job
-        colour = STATUS_COLORS.get(j.status, C['queued'])
-
-        self.spine.setStyleSheet(f'#Spine {{ background: {colour}; }}')
-
-        self.status.setText(j.status.upper())
-        self.status.setStyleSheet(f'color: {colour};')
-
-        self.title.setText(shorten(j.title) if j.title else 'Waiting for details')
-        self.title.setStyleSheet('' if j.title else f'color: {C["faint"]}; font-weight: 500;')
-
-        self.url.setText(shorten(j.url, 110))
-
-        self.bar.setValue(int(j.percent))
-
-        bits = [f'{int(j.percent)}%', j.size]
-        if j.speed:
-            bits.append(j.speed)
-        self.meta.setText('   '.join(b for b in bits if b))
-
-        message = ' · '.join(p for p in (j.error, j.note) if p)
-        if message:
-            self.error.setText(message)
-            self.error.setStyleSheet(
-                f'color: {C["waiting"] if j.status in ("Waiting", "Retrying") else C["failed"]};'
-            )
-            self.error.show()
-        else:
-            self.error.hide()
-
-
-class Chip(QFrame):
-
-    def __init__(self, label, colour, parent=None):
-        super().__init__(parent)
-        self.setObjectName('Chip')
-        lay = QVBoxLayout(self)
-        lay.setContentsMargins(14, 8, 14, 8)
-        lay.setSpacing(1)
-
-        self.value = QLabel('0')
-        self.value.setProperty('role', 'chipValue')
-        self.value.setStyleSheet(f'color: {colour};')
-        self.caption = QLabel(label.upper())
-        self.caption.setProperty('role', 'chipLabel')
-        lay.addWidget(self.value)
-        lay.addWidget(self.caption)
-
-    def set(self, n):
-        self.value.setText(str(n))
 
 
 class MainWindow(QMainWindow):
@@ -1219,23 +1031,3 @@ class MainWindow(QMainWindow):
         self._save_settings()
         self._save_queue()
         event.accept()
-
-
-def main():
-    app = QApplication(sys.argv)
-    app.setApplicationName(APP_NAME)
-    app.setOrganizationName(ORG)
-    app.setStyleSheet(STYLESHEET)
-
-    icon_path = resource('icon.ico')
-    if os.path.isfile(icon_path):
-        app.setWindowIcon(QIcon(icon_path))
-
-    window = MainWindow()
-    window.show()
-    QTimer.singleShot(0, lambda: window.folder_edit.setCursorPosition(0))
-    return app.exec()
-
-
-if __name__ == '__main__':
-    sys.exit(main())
