@@ -76,8 +76,8 @@ QUALITY_OPTIONS = {
     'Audio only': 'bestaudio/best',
 }
 
-MAX_ACCOUNT_VIDEOS = 100
-ACCOUNT_LIMITS = [20, 40, 60, 80, 100]
+MAX_ACCOUNT_VIDEOS = 200
+ACCOUNT_LIMITS = [20, 40, 60, 80, 100, 120, 140, 160, 180, 200]
 
 NON_MEDIA_HINTS = (
     '/tiktokstudio', '/upload', '/login', '/signup', '/settings',
