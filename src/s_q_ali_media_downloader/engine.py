@@ -171,7 +171,7 @@ def is_youtube_playlist_url(url):
     low = url.strip().lower()
     if not low.startswith(('http://', 'https://')):
         return False
-    return re.search(r'(^|[./])youtube\.com', low) is not None and '/playlist?' in low
+    return re.search(r'(^|[./])youtube\.com', low) is not None and ('/playlist?' in low or 'list=' in low)
 
 
 def is_youtube_channel_url(url):
@@ -180,7 +180,19 @@ def is_youtube_channel_url(url):
         return False
     if not re.search(r'(^|[./])youtube\.com', low):
         return False
-    return ('/@' in low) or ('/channel/' in low) or ('/c/' in low) or ('/user/' in low)
+    if ('/@' in low) or ('/channel/' in low) or ('/c/' in low) or ('/user/' in low):
+        return True
+    # Support shorthand youtube.com/UC... channel ID format
+    return re.search(r'youtube\.com/uc[a-z0-9_\-]{22}', low) is not None
+
+
+def normalize_youtube_channel_url(url):
+    """Ensures youtube.com/UC... shorthand URLs are normalized to youtube.com/channel/UC..."""
+    url = url.strip()
+    match = re.search(r'https?://(?:www\.)?youtube\.com/(UC[A-Za-z0-9_\-]{22})/?$', url, re.IGNORECASE)
+    if match:
+        return f"https://www.youtube.com/channel/{match.group(1)}"
+    return url
 
 
 def platform_of(url):

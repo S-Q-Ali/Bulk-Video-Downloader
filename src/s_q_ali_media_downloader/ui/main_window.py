@@ -47,9 +47,11 @@ from s_q_ali_media_downloader.engine import (
     is_youtube_channel_url,
     is_youtube_playlist_url,
     is_youtube_url,
+    normalize_youtube_channel_url,
     platform_of,
 )
 from s_q_ali_media_downloader.theme import STATUS_COLORS, C
+from s_q_ali_media_downloader.ui.agent_tab import AgentTabWidget
 from s_q_ali_media_downloader.ui.widgets import Chip, Job, JobCard, glyph_icon, shield_pixmap
 
 ORG = 'S-Q-Ali'
@@ -370,6 +372,23 @@ class MainWindow(QMainWindow):
         self.source_stack.addWidget(page_account)
         return self.source_stack
 
+    def _handle_agent_urls(self, urls: list):
+        if not urls:
+            return
+        lines = "\n".join(urls)
+        current = self.links.toPlainText().strip()
+        if current:
+            self.links.setPlainText(current + "\n" + lines)
+        else:
+            self.links.setPlainText(lines)
+        self.tab_links.setChecked(True)
+        self.source_stack.setCurrentIndex(0)
+        self.add_links_to_queue()
+        if hasattr(self, 'btn_nav_queue'):
+            self.btn_nav_queue.setChecked(True)
+        if hasattr(self, 'workspace_stack'):
+            self.workspace_stack.setCurrentIndex(0)
+
     def _switch_source(self, index):
         self.source_stack.setCurrentIndex(index)
 
@@ -384,11 +403,46 @@ class MainWindow(QMainWindow):
         lay.setContentsMargins(0, 0, 0, 0)
         lay.setSpacing(0)
 
+        # Workspace Navigation Header
+        nav_bar_frame = QFrame()
+        nav_bar_frame.setStyleSheet("background: #100E14; border-bottom: 1px solid #332C42; padding: 10px 24px;")
+        nav_lay = QHBoxLayout(nav_bar_frame)
+        nav_lay.setContentsMargins(0, 0, 0, 0)
+        nav_lay.setSpacing(12)
+
+        self.work_tab_group = QButtonGroup(self)
+        self.work_tab_group.setExclusive(True)
+
+        self.btn_nav_queue = QPushButton("📥 Download Queue")
+        self.btn_nav_agent = QPushButton("🤖 AI Channel Finder & Social Inspector")
+
+        for idx, btn in enumerate((self.btn_nav_queue, self.btn_nav_agent)):
+            btn.setCheckable(True)
+            btn.setProperty("kind", "tab")
+            btn.setCursor(Qt.PointingHandCursor)
+            btn.setMinimumHeight(34)
+            self.work_tab_group.addButton(btn, idx)
+            nav_lay.addWidget(btn)
+
+        self.btn_nav_queue.setChecked(True)
+        nav_lay.addStretch(1)
+        lay.addWidget(nav_bar_frame)
+
+        # Workspace Stack
+        self.workspace_stack = QStackedWidget()
+        self.work_tab_group.idClicked.connect(self.workspace_stack.setCurrentIndex)
+
+        # Page 0: Queue Workspace Page
+        page_queue = QWidget()
+        pql = QVBoxLayout(page_queue)
+        pql.setContentsMargins(0, 0, 0, 0)
+        pql.setSpacing(0)
+
         header = QFrame()
         header.setObjectName('WorkHeader')
         hl = QVBoxLayout(header)
-        hl.setContentsMargins(24, 18, 24, 16)
-        hl.setSpacing(16)
+        hl.setContentsMargins(24, 14, 24, 14)
+        hl.setSpacing(14)
 
         chips = QHBoxLayout()
         chips.setSpacing(10)
@@ -446,7 +500,7 @@ class MainWindow(QMainWindow):
         bar.addWidget(clear_all)
         hl.addLayout(bar)
 
-        lay.addWidget(header)
+        pql.addWidget(header)
 
         self.scroll = QScrollArea()
         self.scroll.setWidgetResizable(True)
@@ -463,13 +517,23 @@ class MainWindow(QMainWindow):
         self.queue_layout.addStretch(1)
 
         self.scroll.setWidget(host)
-        lay.addWidget(self.scroll, 1)
+        pql.addWidget(self.scroll, 1)
+
+        self.workspace_stack.addWidget(page_queue)
+
+        # Page 1: AI Agent Container Workspace Page
+        self.agent_tab = AgentTabWidget()
+        self.agent_tab.send_to_queue_requested.connect(self._handle_agent_urls)
+        self.workspace_stack.addWidget(self.agent_tab)
+
+        lay.addWidget(self.workspace_stack, 1)
 
         lay.addWidget(self._build_notice_bar())
         lay.addWidget(self._build_status_line())
         lay.addWidget(self._build_social_bar())
 
         return work
+
 
     def _build_notice_bar(self):
         frame = QFrame()
@@ -693,6 +757,17 @@ class MainWindow(QMainWindow):
         if not text:
             self.set_status('Type a username or paste a profile link first.')
             return
+        # New: Detect YouTube channel URLs and handle them directly
+        if is_youtube_channel_url(text):
+            # Normalize shorthand URLs if needed
+            normalized = normalize_youtube_channel_url(text)
+            # Populate the Paste links area with this channel URL
+            existing = self.links.toPlainText().strip()
+            self.links.setPlainText(f'{existing}\n{normalized}' if existing else normalized)
+            self.tab_links.setChecked(True)
+            self.source_stack.setCurrentIndex(0)
+            self.set_status('YouTube channel URL added – use Add to queue to expand videos.')
+            return
         limit = int(self.account_limit.currentText())
         self.fetcher = AccountFetchThread(text, limit, self.cookies.isChecked(), self)
         self.fetcher.note.connect(self.set_status)
@@ -727,6 +802,7 @@ class MainWindow(QMainWindow):
             if not url or url.startswith('#'):
                 continue
             if is_youtube_playlist_url(url) or is_youtube_channel_url(url):
+                url = normalize_youtube_channel_url(url)
                 if url in existing:
                     duplicates += 1
                     continue
