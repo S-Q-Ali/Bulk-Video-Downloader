@@ -238,7 +238,7 @@ class AccountFetchThread(QThread):
             'quiet': True,
             'no_warnings': True,
             'noprogress': True,
-            'extract_flat': 'in_playlist',
+            # 'extract_flat' is omitted because yt_dlp does not honor `playlistend` for TikTok profiles.
             'playlistend': self.limit,
             'ignoreerrors': True,
         }
@@ -292,7 +292,8 @@ class YouTubeFetchThread(QThread):
             'quiet': True,
             'no_warnings': True,
             'noprogress': True,
-            'extract_flat': 'in_playlist',
+            # 'extract_flat' is omitted because yt_dlp does not honor `playlistend`
+            # for YouTube channel / playlist URLs when it is set.
             'playlistend': self.limit,
             'ignoreerrors': True,
         }

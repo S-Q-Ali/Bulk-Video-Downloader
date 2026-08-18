@@ -757,18 +757,20 @@ class MainWindow(QMainWindow):
         if not text:
             self.set_status('Type a username or paste a profile link first.')
             return
-        # New: Detect YouTube channel URLs and handle them directly
-        if is_youtube_channel_url(text):
-            # Normalize shorthand URLs if needed
-            normalized = normalize_youtube_channel_url(text)
-            # Populate the Paste links area with this channel URL
-            existing = self.links.toPlainText().strip()
-            self.links.setPlainText(f'{existing}\n{normalized}' if existing else normalized)
-            self.tab_links.setChecked(True)
-            self.source_stack.setCurrentIndex(0)
-            self.set_status('YouTube channel URL added – use Add to queue to expand videos.')
-            return
         limit = int(self.account_limit.currentText())
+        # YouTube channel / playlist URL — expand into individual video URLs
+        if is_youtube_channel_url(text) or is_youtube_playlist_url(text):
+            normalized = normalize_youtube_channel_url(text)
+            self.fetcher = YouTubeFetchThread(normalized, limit, self)
+            self.fetcher.note.connect(self.set_status)
+            self.fetcher.found.connect(self.on_youtube_channel_fetched)
+            self.fetcher.failed.connect(self.on_account_failed)
+            self.fetcher.finished.connect(self._sync_buttons)
+            self.fetcher.start()
+            self.btn_fetch.setEnabled(False)
+            self.set_status(f'Fetching up to {limit} video URLs from YouTube channel…')
+            return
+        # TikTok / other profile-based account
         self.fetcher = AccountFetchThread(text, limit, self.cookies.isChecked(), self)
         self.fetcher.note.connect(self.set_status)
         self.fetcher.found.connect(self.on_account_found)
@@ -787,6 +789,19 @@ class MainWindow(QMainWindow):
         n = len(urls)
         self.set_status(
             f'Found {n} video{"s" if n != 1 else ""} from @{username}. '
+            'Check the list, then Add to queue.'
+        )
+
+    def on_youtube_channel_fetched(self, urls, label):
+        """Receives individual video URLs from a YouTube channel/playlist fetch and shows them in Paste Links."""
+        existing = self.links.toPlainText().strip()
+        block = '\n'.join(urls)
+        self.links.setPlainText(f'{existing}\n{block}' if existing else block)
+        self.tab_links.setChecked(True)
+        self.source_stack.setCurrentIndex(0)
+        n = len(urls)
+        self.set_status(
+            f'Found {n} video{"s" if n != 1 else ""} from {label}. '
             'Check the list, then Add to queue.'
         )
 
