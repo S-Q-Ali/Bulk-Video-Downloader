@@ -1,19 +1,19 @@
-"""Tool for extracting Facebook and Instagram URLs and handles from text/URLs."""
+"""Tool for extracting Facebook, Instagram, TikTok, and YouTube URLs and handles from text/URLs."""
 
 import re
 from typing import ClassVar
 
 
 class LinkParserTool:
-    """Extracts Facebook and Instagram URLs and handles from channel metadata, descriptions, and link lists."""
+    """Extracts social URLs and handles from channel metadata, descriptions, and link lists."""
 
     # FB Regex patterns
     FB_URL_PATTERN = re.compile(
-        r"https?://(?:www\.|m\.|mobile\.)?(?:facebook\.com|fb\.com|fb\.watch)/(?:pages/[^/\s]+/\d+|groups/[^/\s]+|people/[^/\s]+/\d+|[A-Za-z0-9\._\-]+)/?",
+        r"https?://(?:[\w\-]+\.)*(?:facebook\.com|fb\.com|fb\.watch)/(?:pages/[^/\s\"']+/(\d+)|groups/[^/\s\"']+|people/[^/\s\"']+/\d+|profile\.php\?id=\d+|[A-Za-z0-9\._\-]+)/?",
         re.IGNORECASE,
     )
-    FB_HANDLE_PATTERN = re.compile(
-        r"(?:facebook|fb)\.com/([A-Za-z0-9\._\-]+)",
+    FB_PROFILE_ID_PATTERN = re.compile(
+        r"(?:facebook|fb)\.com/profile\.php\?id=(\d+)",
         re.IGNORECASE,
     )
 
@@ -22,8 +22,21 @@ class LinkParserTool:
         r"https?://(?:www\.)?(?:instagram\.com|instagr\.am)/([A-Za-z0-9\._\-]+)/?",
         re.IGNORECASE,
     )
+    # Word-boundary anchored so "config: myname" / "navigation:" cannot match,
+    # and requiring a real separator (colon/space/@) so URL text like
+    # "instagram.com/explore/" is never parsed as a handle fallback.
     IG_TEXT_HANDLE_PATTERN = re.compile(
-        r"(?:ig|instagram|insta)[:\s]*@?([A-Za-z0-9\._\-]{3,30})",
+        r"\b(?:ig|instagram|insta)\b(?:[:\s]+@?|@)([A-Za-z0-9][A-Za-z0-9\._]{2,29})",
+        re.IGNORECASE,
+    )
+
+    # TikTok pattern (profiles only: tiktok.com/@handle)
+    TIKTOK_URL_PATTERN = re.compile(
+        r"https?://(?:www\.|m\.)?tiktok\.com/@([A-Za-z0-9\._]{2,30})/?",
+        re.IGNORECASE,
+    )
+    TIKTOK_TEXT_HANDLE_PATTERN = re.compile(
+        r"\btiktok\b[:\s]*@?([A-Za-z0-9\._]{2,30})",
         re.IGNORECASE,
     )
 
@@ -46,31 +59,63 @@ class LinkParserTool:
         "privacy",
         "help",
         "terms",
+        "accounts",
+        "graphql",
+        "api",
+        "watch",
+        "hashtag",
+        "login",
+        "signup",
+        "policy",
+        "support",
+        "business",
+        "events",
+        "marketplace",
+        "gaming",
+        "jobs",
     }
 
     @classmethod
     def extract_social_links(
         r, text: str, links: list[str] | None = None
-    ) -> tuple[str | None, str | None]:
-        """Extracts primary (facebook_url, instagram_url) pair from raw text and link lists."""
+    ) -> tuple[str | None, str | None, str | None]:
+        """Extracts primary (facebook_url, instagram_url, tiktok_url) from raw text and links.
+
+        Facebook matches are priority-ranked: vanity page > profile.php > people/ >
+        pages/ > groups/, so a group link never shadows the creator's actual page.
+        """
         fb_url = None
         ig_url = None
+        tiktok_url = None
 
         all_input = text + " " + " ".join(links or [])
 
-        # 1. Check explicit URLs
-        fb_matches = r.FB_URL_PATTERN.findall(all_input)
-        for match in fb_matches:
-            clean_url = r._clean_url(match)
-            if clean_url and r._is_valid_fb_url(clean_url):
-                fb_url = clean_url
+        # ---- TikTok (profile URLs only, @handle form) ----
+        for handle in r.TIKTOK_URL_PATTERN.findall(all_input):
+            handle = handle.strip(".")
+            if handle.lower() not in r.EXCLUDED_SEGMENTS and len(handle) >= 2:
+                tiktok_url = f"https://www.tiktok.com/@{handle}/"
                 break
+        if not tiktok_url:
+            tiktok_text_match = r.TIKTOK_TEXT_HANDLE_PATTERN.search(text)
+            if tiktok_text_match:
+                handle = tiktok_text_match.group(1).strip().strip(".")
+                if handle.lower() not in r.EXCLUDED_SEGMENTS and len(handle) >= 2:
+                    tiktok_url = f"https://www.tiktok.com/@{handle}/"
 
-        ig_matches = r.IG_URL_PATTERN.findall(all_input)
-        for match in ig_matches:
-            # Match is either full URL or group 1 handle depending on regex search vs findall
-            full_match = match if isinstance(match, str) else match[0]
-            handle = full_match.strip("/").split("/")[-1]
+        # ---- Facebook (ranked) ----
+        fb_candidates: list[tuple[int, str]] = []
+        for match in r.FB_URL_PATTERN.finditer(all_input):
+            clean_url = r._clean_url(match.group(0))
+            if clean_url and r._is_valid_fb_url(clean_url):
+                fb_candidates.append((r._fb_url_priority(clean_url), clean_url))
+        if fb_candidates:
+            fb_candidates.sort(key=lambda pair: pair[0])
+            fb_url = fb_candidates[0][1]
+
+        # ---- Instagram (explicit URLs) ----
+        for match in r.IG_URL_PATTERN.finditer(all_input):
+            handle = match.group(1).strip(".")
             if handle.lower() not in r.EXCLUDED_SEGMENTS and len(handle) >= 3:
                 ig_url = f"https://www.instagram.com/{handle}/"
                 break
@@ -79,36 +124,59 @@ class LinkParserTool:
         if not ig_url:
             ig_text_match = r.IG_TEXT_HANDLE_PATTERN.search(text)
             if ig_text_match:
-                handle = ig_text_match.group(1).strip()
+                handle = ig_text_match.group(1).strip().strip(".")
                 if handle.lower() not in r.EXCLUDED_SEGMENTS and len(handle) >= 3:
                     ig_url = f"https://www.instagram.com/{handle}/"
 
-        return fb_url, ig_url
+        return fb_url, ig_url, tiktok_url
 
     @classmethod
     def extract_handle_from_url(r, url: str) -> str | None:
-        """Extracts handle string from a FB/IG URL."""
+        """Extracts handle string from a FB/IG/TikTok URL."""
         if not url:
             return None
+
+        # Numeric FB profile (profile.php?id=123) — keep the numeric id.
+        profile_match = r.FB_PROFILE_ID_PATTERN.search(url)
+        if profile_match:
+            return profile_match.group(1)
+
         clean = url.rstrip("/")
         parts = clean.split("/")
         if parts:
             last = parts[-1]
             if "?" in last:
                 last = last.split("?")[0]
+            last = last.removeprefix("@")
             if last.lower() not in r.EXCLUDED_SEGMENTS and len(last) >= 2:
                 return last
         return None
 
     @classmethod
     def _clean_url(r, url: str) -> str:
-        """Strips query params and trailing slashes."""
-        url = url.strip()
+        """Strips tracking params but preserves profile.php?id= payloads."""
+        url = url.strip().rstrip("/")
+        if "profile.php?id=" in url.lower():
+            match = r.FB_PROFILE_ID_PATTERN.search(url)
+            if match:
+                return f"https://www.facebook.com/profile.php?id={match.group(1)}"
         if "?" in url:
             url = url.split("?")[0]
-        if not url.endswith("/"):
-            url += "/"
-        return url
+        return url + "/"
+
+    @classmethod
+    def _fb_url_priority(r, url: str) -> int:
+        """Lower = higher priority. Vanity pages first, groups last."""
+        lowered = url.lower()
+        if "/groups/" in lowered:
+            return 9
+        if "/pages/" in lowered:
+            return 2
+        if "/people/" in lowered:
+            return 1
+        if "profile.php?id=" in lowered:
+            return 2
+        return 0  # vanity /username — strongest signal
 
     @classmethod
     def _is_valid_fb_url(r, url: str) -> bool:

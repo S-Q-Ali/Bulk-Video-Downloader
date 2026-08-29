@@ -151,17 +151,16 @@ class YouTubeSearchTool:
                         continue
 
                     seen_channels.add(channel_id)
-                    handle = (
-                        f"@{channel_id}"
-                        if not channel_name
-                        else f"@{channel_name.replace(' ', '')}"
-                    )
-
+                    # NOTE: do NOT fabricate a handle from the channel display
+                    # name — a name with spaces stripped is rarely the real
+                    # YouTube handle, and probing FB/IG with it produces false
+                    # matches. Leave handle=None; enrichment fills it in when a
+                    # real canonical handle can be confirmed.
                     results.append(
                         ChannelMetadata(
                             channel_id=channel_id,
                             title=channel_name or "YouTube Creator",
-                            handle=handle,
+                            handle=None,
                             subscribers=0,
                             subscribers_formatted="N/A",
                             youtube_url=channel_url

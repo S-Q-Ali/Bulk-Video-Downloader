@@ -10,9 +10,13 @@ from s_q_ali_media_downloader.agent.schema import (
     AgentSearchResult,
     ChannelMetadata,
     SocialStatus,
+    TikTokProfileMetadata,
+    TikTokSearchResult,
 )
 from s_q_ali_media_downloader.agent.tools.metadata_extractor import MetadataExtractorTool
 from s_q_ali_media_downloader.agent.tools.social_verifier import SocialVerifierTool
+from s_q_ali_media_downloader.agent.tools.tiktok_search import TikTokSearchTool
+from s_q_ali_media_downloader.agent.tools.youtube_existence import YouTubeExistenceTool
 from s_q_ali_media_downloader.agent.tools.youtube_search import YouTubeSearchTool
 
 logger = logging.getLogger(__name__)
@@ -29,6 +33,8 @@ class AgentOrchestrator:
         self.search_tool = YouTubeSearchTool(api_key=api_key)
         self.extractor_tool = MetadataExtractorTool()
         self.verifier_tool = SocialVerifierTool()
+        self.tiktok_tool = TikTokSearchTool()
+        self.youtube_existence_tool = YouTubeExistenceTool(api_key=api_key)
         self.progress_callback = progress_callback
 
     def _emit(self, percent: int, message: str) -> None:
@@ -45,6 +51,7 @@ class AgentOrchestrator:
         min_subscribers: int = 0,
         check_facebook: bool = True,
         check_instagram: bool = True,
+        check_tiktok: bool = False,
         only_no_socials: bool = False,
     ) -> AgentSearchResult:
         """Executes full autonomous agent pipeline."""
@@ -78,26 +85,45 @@ class AgentOrchestrator:
             enriched_channels.append(enriched)
 
         # 3. Social Presence Verification
-        self._emit(60, "Verifying Facebook & Instagram presences...")
+        self._emit(60, "Verifying Facebook, Instagram & TikTok presences...")
         verified_channels = asyncio.run(
             self._verify_all_socials(
-                enriched_channels, check_facebook, check_instagram
+                enriched_channels, check_facebook, check_instagram, check_tiktok
             )
         )
 
         # 4. Filter & Flag Opportunities
+        # Only platforms the user actually enabled may count toward "missing".
+        checked: list[str] = []
+        if check_facebook:
+            checked.append("facebook")
+        if check_instagram:
+            checked.append("instagram")
+        if check_tiktok:
+            checked.append("tiktok")
+
         final_channels: list[ChannelMetadata] = []
         no_socials_count = 0
 
         for ch in verified_channels:
-            no_fb = ch.facebook.status == SocialStatus.NOT_FOUND
-            no_ig = ch.instagram.status == SocialStatus.NOT_FOUND
+            statuses = {
+                "facebook": ch.facebook.status,
+                "instagram": ch.instagram.status,
+                "tiktok": ch.tiktok.status,
+            }
 
-            ch.has_no_socials = no_fb and no_ig
+            # A platform counts as "missing" only when it was probed and
+            # definitively found to be absent. INCONCLUSIVE / unchecked
+            # platforms never mark a channel as a target.
+            truly_missing = [
+                p for p in checked if statuses[p] == SocialStatus.NOT_FOUND
+            ]
+            ch.has_no_socials = bool(checked) and len(truly_missing) == len(checked)
+
             if ch.has_no_socials:
                 no_socials_count += 1
                 ch.opportunity_flag = "TARGET_NO_SOCIALS"
-            elif no_fb or no_ig:
+            elif truly_missing:
                 ch.opportunity_flag = "PARTIAL_SOCIALS"
             else:
                 ch.opportunity_flag = "FULL_SOCIALS"
@@ -111,7 +137,7 @@ class AgentOrchestrator:
         elapsed = round(time.time() - start_time, 2)
         self._emit(
             100,
-            f"Agent completed in {elapsed}s. {len(final_channels)} channels displayed ({no_socials_count} missing FB/IG).",
+            f"Agent completed in {elapsed}s. {len(final_channels)} channels displayed ({no_socials_count} missing checked socials).",
         )
 
         return AgentSearchResult(
@@ -121,6 +147,7 @@ class AgentOrchestrator:
             execution_time_seconds=elapsed,
             timestamp=datetime.now(timezone.utc).isoformat(),
             channels=final_channels,
+            checked_platforms=checked,
         )
 
     async def _verify_all_socials(
@@ -128,6 +155,7 @@ class AgentOrchestrator:
         channels: list[ChannelMetadata],
         check_facebook: bool,
         check_instagram: bool,
+        check_tiktok: bool = False,
     ) -> list[ChannelMetadata]:
         """Runs async verification probes for list of channels."""
         total = len(channels)
@@ -135,15 +163,17 @@ class AgentOrchestrator:
             percent = 60 + int((idx / max(total, 1)) * 35)
             self._emit(
                 percent,
-                f"Probing FB & IG for @{ch.handle or ch.title} ({idx+1}/{total})...",
+                f"Probing FB/IG/TikTok for @{ch.handle or ch.title} ({idx+1}/{total})...",
             )
 
             candidate_fb = ch.facebook.verified_url if check_facebook else None
             candidate_ig = ch.instagram.verified_url if check_instagram else None
+            candidate_tiktok = ch.tiktok.verified_url if check_tiktok else None
 
-            fb_pres, ig_pres = await self.verifier_tool.verify_channel_socials(
+            fb_pres, ig_pres, tiktok_pres = await self.verifier_tool.verify_channel_socials(
                 candidate_fb=candidate_fb,
                 candidate_ig=candidate_ig,
+                candidate_tiktok=candidate_tiktok,
                 channel_handle=ch.handle,
             )
 
@@ -151,8 +181,71 @@ class AgentOrchestrator:
                 ch.facebook = fb_pres
             if check_instagram:
                 ch.instagram = ig_pres
+            if check_tiktok:
+                ch.tiktok = tiktok_pres
 
             # Pacing delay to prevent IP rate-limiting
             await asyncio.sleep(0.5)
 
         return channels
+
+    def run_tiktok_discovery(
+        self,
+        query: str,
+        max_profiles: int = 30,
+        only_no_youtube: bool = False,
+    ) -> TikTokSearchResult:
+        """TikTok-first mode: find creators, flag those WITHOUT a YouTube channel."""
+        start_time = time.time()
+        self._emit(5, f"Initializing TikTok Agent... Searching TikTok for '{query}'...")
+
+        raw_profiles = self.tiktok_tool.search_profiles(query, max_profiles=max_profiles)
+        total_found = len(raw_profiles)
+        self._emit(35, f"Found {total_found} TikTok profiles. Checking YouTube presence...")
+
+        final_profiles: list[TikTokProfileMetadata] = []
+        no_youtube_count = 0
+
+        for idx, profile in enumerate(raw_profiles):
+            percent = 35 + int((idx / max(total_found, 1)) * 60)
+            self._emit(percent, f"Checking YouTube presence of @{profile.handle} ({idx+1}/{total_found})...")
+
+            presence = self.youtube_existence_tool.check_youtube_presence(profile)
+            profile.youtube = presence
+            profile.has_youtube = presence.status in (
+                SocialStatus.VERIFIED,
+                SocialStatus.UNVERIFIED_HANDLE,
+            )
+
+            if profile.has_youtube:
+                profile.opportunity_flag = "HAS_YOUTUBE"
+            elif presence.status == SocialStatus.INCONCLUSIVE:
+                profile.opportunity_flag = "NEEDS_REVIEW"
+            else:
+                no_youtube_count += 1
+                profile.opportunity_flag = "TARGET_NO_YOUTUBE"
+
+            if only_no_youtube:
+                if profile.opportunity_flag == "TARGET_NO_YOUTUBE":
+                    final_profiles.append(profile)
+            else:
+                final_profiles.append(profile)
+
+            # Pacing delay between YouTube searches
+            time.sleep(0.5)
+
+        elapsed = round(time.time() - start_time, 2)
+        self._emit(
+            100,
+            f"TikTok Agent completed in {elapsed}s. {len(final_profiles)} profiles displayed ({no_youtube_count} without YouTube).",
+        )
+
+        return TikTokSearchResult(
+            query=query,
+            total_searched=total_found,
+            profiles_matching_filter=len(final_profiles),
+            no_youtube_count=no_youtube_count,
+            execution_time_seconds=elapsed,
+            timestamp=datetime.now(timezone.utc).isoformat(),
+            profiles=final_profiles,
+        )

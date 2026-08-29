@@ -1,8 +1,8 @@
-; S-Q-Ali Media Downloader — Inno Setup script (v2.0.0)
+; S-Q-Ali Media Downloader — Inno Setup script (v2.1.0)
 ; Per-user install (no admin), bundles ffmpeg.exe for merging.
 
 #define MyAppName "S-Q-Ali Media Downloader"
-#define MyAppVersion "2.0.0"
+#define MyAppVersion "2.1.0"
 #define MyAppPublisher "S-Q-Ali"
 #define MyAppURL "https://github.com/S-Q-Ali/Bulk-Video-Downloader"
 #define MyAppExeName "S-Q-Ali Media Downloader.exe"
@@ -22,7 +22,7 @@ PrivilegesRequired=lowest
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 OutputDir=.
-OutputBaseFilename=S-Q-Ali-Media-Downloader-Setup-2.0.0
+OutputBaseFilename=S-Q-Ali-Media-Downloader-Setup-2.1.0
 SetupIconFile=..\src\s_q_ali_media_downloader\resources\icon.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
 Compression=lzma2/ultra64

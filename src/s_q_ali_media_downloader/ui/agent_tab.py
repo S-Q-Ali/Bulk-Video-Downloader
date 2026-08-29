@@ -27,7 +27,11 @@ from s_q_ali_media_downloader.agent.schema import (
     AgentSearchResult,
     ChannelMetadata,
     SocialStatus,
+    TikTokSearchResult,
 )
+
+MODE_YOUTUBE = "YouTube → Socials (FB/IG/TikTok)"
+MODE_TIKTOK = "TikTok → YouTube (Creators Without YT)"
 
 
 class AgentWorkerThread(QThread):
@@ -44,8 +48,11 @@ class AgentWorkerThread(QThread):
         min_subs: int,
         check_fb: bool,
         check_ig: bool,
+        check_tiktok: bool,
         only_no_socials: bool,
+        only_no_youtube: bool,
         api_key: str,
+        mode: str = MODE_YOUTUBE,
     ):
         super().__init__()
         self.query = query
@@ -53,8 +60,11 @@ class AgentWorkerThread(QThread):
         self.min_subs = min_subs
         self.check_fb = check_fb
         self.check_ig = check_ig
+        self.check_tiktok = check_tiktok
         self.only_no_socials = only_no_socials
+        self.only_no_youtube = only_no_youtube
         self.api_key = api_key
+        self.mode = mode
 
     def run(self):
         try:
@@ -62,14 +72,22 @@ class AgentWorkerThread(QThread):
                 api_key=self.api_key,
                 progress_callback=lambda pct, msg: self.progress_updated.emit(pct, msg),
             )
-            result = orchestrator.run_discovery(
-                query=self.query,
-                max_channels=self.max_channels,
-                min_subscribers=self.min_subs,
-                check_facebook=self.check_fb,
-                check_instagram=self.check_ig,
-                only_no_socials=self.only_no_socials,
-            )
+            if self.mode == MODE_TIKTOK:
+                result = orchestrator.run_tiktok_discovery(
+                    query=self.query,
+                    max_profiles=self.max_channels,
+                    only_no_youtube=self.only_no_youtube,
+                )
+            else:
+                result = orchestrator.run_discovery(
+                    query=self.query,
+                    max_channels=self.max_channels,
+                    min_subscribers=self.min_subs,
+                    check_facebook=self.check_fb,
+                    check_instagram=self.check_ig,
+                    check_tiktok=self.check_tiktok,
+                    only_no_socials=self.only_no_socials,
+                )
             self.search_finished.emit(result)
         except Exception as e:
             self.search_failed.emit(str(e))
@@ -104,6 +122,19 @@ class AgentTabWidget(QWidget):
         lbl_title = QLabel("🤖 AI CHANNEL FINDER & SOCIAL PRESENCE INSPECTOR")
         lbl_title.setStyleSheet("font-size: 14px; font-weight: 800; color: #22D3EE; letter-spacing: 2px;")
         controls_layout.addWidget(lbl_title)
+
+        # Row 0: Discovery Mode
+        row0 = QHBoxLayout()
+        row0.setSpacing(10)
+        lbl_mode = QLabel("Discovery Mode:")
+        lbl_mode.setStyleSheet("font-weight: bold; color: #9C93AE;")
+        self.mode_combo = QComboBox()
+        self.mode_combo.addItems([MODE_YOUTUBE, MODE_TIKTOK])
+        self.mode_combo.setMinimumHeight(34)
+        self.mode_combo.currentTextChanged.connect(self._on_mode_changed)
+        row0.addWidget(lbl_mode)
+        row0.addWidget(self.mode_combo, 1)
+        controls_layout.addLayout(row0)
 
         # Row 1: Query Input + Search Button
         row1 = QHBoxLayout()
@@ -141,13 +172,13 @@ class AgentTabWidget(QWidget):
         row2.addWidget(self.depth_combo)
 
         # Min Subs
-        lbl_subs = QLabel("Min Subs:")
-        lbl_subs.setStyleSheet("font-weight: bold; color: #9C93AE;")
+        self.lbl_subs = QLabel("Min Subs:")
+        self.lbl_subs.setStyleSheet("font-weight: bold; color: #9C93AE;")
         self.subs_combo = QComboBox()
         self.subs_combo.addItems(["Any", "5K+", "10K+", "50K+", "100K+"])
         self.subs_combo.setCurrentIndex(0)
 
-        row2.addWidget(lbl_subs)
+        row2.addWidget(self.lbl_subs)
         row2.addWidget(self.subs_combo)
 
         # Checkboxes
@@ -155,12 +186,18 @@ class AgentTabWidget(QWidget):
         self.chk_fb.setChecked(True)
         self.chk_ig = QCheckBox("Instagram Profiles")
         self.chk_ig.setChecked(True)
+        self.chk_tiktok = QCheckBox("TikTok Profiles")
+        self.chk_tiktok.setChecked(True)
         self.chk_no_socials = QCheckBox("Only Missing Social Pages (Targets)")
         self.chk_no_socials.setChecked(False)
+        self.chk_no_youtube = QCheckBox("Only Creators WITHOUT YouTube (Targets)")
+        self.chk_no_youtube.setChecked(True)
 
         row2.addWidget(self.chk_fb)
         row2.addWidget(self.chk_ig)
+        row2.addWidget(self.chk_tiktok)
         row2.addWidget(self.chk_no_socials)
+        row2.addWidget(self.chk_no_youtube)
 
         row2.addStretch()
         controls_layout.addLayout(row2)
@@ -191,29 +228,15 @@ class AgentTabWidget(QWidget):
         main_layout.addWidget(self.progress_bar)
         main_layout.addWidget(self.lbl_status)
 
-        # 3. Results Table (QTableWidget)
+        # 3. Results Table (QTableWidget) — columns adapt to the discovery mode
         self.table = QTableWidget()
-        self.table.setColumnCount(7)
-        self.table.setHorizontalHeaderLabels(
-            [
-                "Select",
-                "Channel Name",
-                "Handle",
-                "Subscribers",
-                "Facebook Page",
-                "Instagram Profile",
-                "Action",
-            ]
-        )
         self.table.setStyleSheet(
             "QTableWidget { background: #1A1722; border: 1px solid #332C42; border-radius: 8px; gridline-color: #241F30; }"
             "QHeaderView::section { background: #241F30; color: #22D3EE; font-weight: 700; padding: 6px; border: none; }"
         )
-        self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
-        self.table.horizontalHeader().setSectionResizeMode(4, QHeaderView.Stretch)
-        self.table.horizontalHeader().setSectionResizeMode(5, QHeaderView.Stretch)
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.setAlternatingRowColors(True)
+        self._setup_table_columns(MODE_YOUTUBE)
 
         main_layout.addWidget(self.table, 1)
 
@@ -225,6 +248,8 @@ class AgentTabWidget(QWidget):
         self.btn_copy_fb.clicked.connect(self._copy_fb_links)
         self.btn_copy_ig = QPushButton("Copy IG Links")
         self.btn_copy_ig.clicked.connect(self._copy_ig_links)
+        self.btn_copy_tiktok = QPushButton("Copy TikTok Links")
+        self.btn_copy_tiktok.clicked.connect(self._copy_tiktok_links)
 
         self.btn_export_csv = QPushButton("Export CSV")
         self.btn_export_csv.clicked.connect(self._export_csv)
@@ -237,12 +262,68 @@ class AgentTabWidget(QWidget):
 
         footer_layout.addWidget(self.btn_copy_fb)
         footer_layout.addWidget(self.btn_copy_ig)
+        footer_layout.addWidget(self.btn_copy_tiktok)
         footer_layout.addWidget(self.btn_export_csv)
         footer_layout.addWidget(self.btn_export_json)
         footer_layout.addStretch()
         footer_layout.addWidget(self.btn_send_queue)
 
         main_layout.addLayout(footer_layout)
+
+    def _on_mode_changed(self, mode: str):
+        self._setup_table_columns(mode)
+        is_tiktok_mode = mode == MODE_TIKTOK
+        self.chk_no_socials.setVisible(not is_tiktok_mode)
+        self.chk_no_youtube.setVisible(is_tiktok_mode)
+        self.chk_fb.setVisible(not is_tiktok_mode)
+        self.chk_ig.setVisible(not is_tiktok_mode)
+        self.chk_tiktok.setVisible(not is_tiktok_mode)
+        self.subs_combo.setVisible(not is_tiktok_mode)
+        self.lbl_subs.setVisible(not is_tiktok_mode)
+        self.btn_copy_fb.setVisible(not is_tiktok_mode)
+        self.btn_copy_ig.setVisible(not is_tiktok_mode)
+        self.btn_copy_tiktok.setVisible(True)
+        self.btn_send_queue.setText(
+            "➔ Send Selected Profiles to Queue"
+            if is_tiktok_mode
+            else "➔ Send Selected Videos to Queue"
+        )
+
+    def _setup_table_columns(self, mode: str):
+        if mode == MODE_TIKTOK:
+            headers = [
+                "Select",
+                "Nickname",
+                "Handle",
+                "Followers",
+                "YouTube Status",
+                "YouTube Channel",
+                "Flag",
+                "Action",
+            ]
+            stretch_cols = [1, 4, 5]
+        else:
+            headers = [
+                "Select",
+                "Channel Name",
+                "Handle",
+                "Subscribers",
+                "Facebook Page",
+                "Instagram Profile",
+                "TikTok Profile",
+                "Flag",
+                "Action",
+            ]
+            stretch_cols = [1, 4, 5, 6]
+
+        self.table.clear()
+        self.table.setColumnCount(len(headers))
+        self.table.setHorizontalHeaderLabels(headers)
+        for col, _ in enumerate(headers):
+            self.table.horizontalHeader().setSectionResizeMode(
+                col,
+                QHeaderView.Stretch if col in stretch_cols else QHeaderView.ResizeToContents,
+            )
 
     def _start_agent(self):
         query = self.query_edit.text().strip()
@@ -255,6 +336,7 @@ class AgentTabWidget(QWidget):
 
         max_channels = depth_map.get(self.depth_combo.currentIndex(), 50)
         min_subs = subs_map.get(self.subs_combo.currentIndex(), 0)
+        mode = self.mode_combo.currentText()
 
         self.btn_search.setEnabled(False)
         self.progress_bar.setVisible(True)
@@ -267,8 +349,11 @@ class AgentTabWidget(QWidget):
             min_subs=min_subs,
             check_fb=self.chk_fb.isChecked(),
             check_ig=self.chk_ig.isChecked(),
+            check_tiktok=self.chk_tiktok.isChecked(),
             only_no_socials=self.chk_no_socials.isChecked(),
+            only_no_youtube=self.chk_no_youtube.isChecked(),
             api_key=self.api_key_edit.text().strip(),
+            mode=mode,
         )
 
         self.worker.progress_updated.connect(self._on_progress)
@@ -280,17 +365,39 @@ class AgentTabWidget(QWidget):
         self.progress_bar.setValue(percent)
         self.lbl_status.setText(message)
 
-    def _on_finished(self, result: AgentSearchResult):
+    def _on_finished(self, result):
         self.search_result = result
         self.btn_search.setEnabled(True)
         self.progress_bar.setVisible(False)
-        self._populate_table(result.channels)
+        mode = self.mode_combo.currentText()
+        self._setup_table_columns(mode)
+        if isinstance(result, TikTokSearchResult):
+            self._populate_tiktok_table(result.profiles)
+        else:
+            self._populate_table(result.channels)
 
     def _on_failed(self, error_msg: str):
         self.btn_search.setEnabled(True)
         self.progress_bar.setVisible(False)
         self.lbl_status.setText(f"Error: {error_msg}")
         QMessageBox.critical(self, "Agent Error", f"Agent failed with error:\n{error_msg}")
+
+    @staticmethod
+    def _status_item(status: SocialStatus, ok_label: str, unknown_label: str = "? Unconfirmed"):
+        item = QTableWidgetItem()
+        if status == SocialStatus.VERIFIED:
+            item.setText(f"✓ {ok_label}")
+            item.setForeground(QColor("#2DD4BF"))  # Teal / Green
+        elif status == SocialStatus.NOT_FOUND:
+            item.setText("✗ Not Found")
+            item.setForeground(QColor("#F2547D"))  # Pink / Red
+        elif status == SocialStatus.INCONCLUSIVE:
+            item.setText(unknown_label)
+            item.setForeground(QColor("#FACC15"))  # Yellow
+        else:  # UNVERIFIED_HANDLE
+            item.setText("~ Unverified")
+            item.setForeground(QColor("#9C93AE"))  # Muted violet
+        return item
 
     def _populate_table(self, channels: list[ChannelMetadata]):
         self.table.setRowCount(0)
@@ -314,51 +421,100 @@ class AgentTabWidget(QWidget):
             self.table.setItem(row_idx, 3, QTableWidgetItem(ch.subscribers_formatted))
 
             # Col 4: Facebook Status Badge
-            fb_item = QTableWidgetItem()
-            if ch.facebook.status == SocialStatus.VERIFIED:
-                fb_item.setText("✓ Verified Page")
-                fb_item.setForeground(QColor("#2DD4BF"))  # Teal / Green
-            else:
-                fb_item.setText("✗ Not Found")
-                fb_item.setForeground(QColor("#F2547D"))  # Pink / Red
-            self.table.setItem(row_idx, 4, fb_item)
+            self.table.setItem(row_idx, 4, self._status_item(ch.facebook.status, "Verified Page"))
 
             # Col 5: Instagram Status Badge
-            ig_item = QTableWidgetItem()
-            if ch.instagram.status == SocialStatus.VERIFIED:
-                ig_item.setText("✓ Verified Profile")
-                ig_item.setForeground(QColor("#2DD4BF"))  # Teal / Green
-            else:
-                ig_item.setText("✗ Not Found")
-                ig_item.setForeground(QColor("#F2547D"))  # Pink / Red
-            self.table.setItem(row_idx, 5, ig_item)
+            self.table.setItem(
+                row_idx, 5, self._status_item(ch.instagram.status, "Verified Profile")
+            )
 
-            # Col 6: Action Button
+            # Col 6: TikTok Status Badge
+            self.table.setItem(row_idx, 6, self._status_item(ch.tiktok.status, "Verified Profile"))
+
+            # Col 7: Opportunity flag
+            flag_item = QTableWidgetItem(ch.opportunity_flag)
+            if ch.opportunity_flag == "TARGET_NO_SOCIALS":
+                flag_item.setForeground(QColor("#F2547D"))
+            elif ch.opportunity_flag == "PARTIAL_SOCIALS":
+                flag_item.setForeground(QColor("#FACC15"))
+            else:
+                flag_item.setForeground(QColor("#2DD4BF"))
+            self.table.setItem(row_idx, 7, flag_item)
+
+            # Col 8: Action Button
             btn_queue = QPushButton("➔ Queue")
             btn_queue.clicked.connect(lambda _, c=ch: self._send_single_channel_to_queue(c))
-            self.table.setCellWidget(row_idx, 6, btn_queue)
+            self.table.setCellWidget(row_idx, 8, btn_queue)
+
+    def _populate_tiktok_table(self, profiles):
+        self.table.setRowCount(0)
+        for row_idx, profile in enumerate(profiles):
+            self.table.insertRow(row_idx)
+
+            # Col 0: Checkbox
+            chk = QCheckBox()
+            chk.setChecked(True)
+            self.table.setCellWidget(row_idx, 0, chk)
+
+            # Col 1: Nickname
+            title_item = QTableWidgetItem(profile.nickname)
+            title_item.setData(Qt.UserRole, profile)
+            self.table.setItem(row_idx, 1, title_item)
+
+            # Col 2: Handle
+            self.table.setItem(row_idx, 2, QTableWidgetItem(f"@{profile.handle}"))
+
+            # Col 3: Followers
+            self.table.setItem(row_idx, 3, QTableWidgetItem(profile.followers_formatted))
+
+            # Col 4: YouTube status badge
+            self.table.setItem(row_idx, 4, self._status_item(profile.youtube.status, "Has Channel"))
+
+            # Col 5: YouTube channel URL (if any)
+            self.table.setItem(row_idx, 5, QTableWidgetItem(profile.youtube.verified_url or "—"))
+
+            # Col 6: Flag
+            flag_item = QTableWidgetItem(profile.opportunity_flag)
+            if profile.opportunity_flag == "TARGET_NO_YOUTUBE":
+                flag_item.setForeground(QColor("#F2547D"))
+            elif profile.opportunity_flag == "NEEDS_REVIEW":
+                flag_item.setForeground(QColor("#FACC15"))
+            else:
+                flag_item.setForeground(QColor("#2DD4BF"))
+            self.table.setItem(row_idx, 6, flag_item)
+
+            # Col 7: Action Button — queue the TikTok profile itself
+            btn_queue = QPushButton("➔ Queue")
+            btn_queue.clicked.connect(lambda _, p=profile: self._send_single_profile_to_queue(p))
+            self.table.setCellWidget(row_idx, 7, btn_queue)
 
     def _send_single_channel_to_queue(self, ch: ChannelMetadata):
         target_url = ch.latest_video_url or ch.youtube_url
         self.send_to_queue_requested.emit([target_url])
 
+    def _send_single_profile_to_queue(self, profile):
+        self.send_to_queue_requested.emit([profile.profile_url])
+
     def _send_selected_to_queue(self):
         selected_urls = []
+        is_tiktok_mode = self.mode_combo.currentText() == MODE_TIKTOK
         for row in range(self.table.rowCount()):
             chk = self.table.cellWidget(row, 0)
             if chk and chk.isChecked():
                 title_item = self.table.item(row, 1)
-                ch: ChannelMetadata = title_item.data(Qt.UserRole)
-                target_url = ch.latest_video_url or ch.youtube_url
-                selected_urls.append(target_url)
+                obj = title_item.data(Qt.UserRole)
+                if is_tiktok_mode:
+                    selected_urls.append(obj.profile_url)
+                else:
+                    selected_urls.append(obj.latest_video_url or obj.youtube_url)
 
         if selected_urls:
             self.send_to_queue_requested.emit(selected_urls)
             QMessageBox.information(
-                self, "Sent to Queue", f"Sent {len(selected_urls)} channel video URLs to download queue!"
+                self, "Sent to Queue", f"Sent {len(selected_urls)} URLs to download queue!"
             )
         else:
-            QMessageBox.warning(self, "No Selection", "Please select at least one channel!")
+            QMessageBox.warning(self, "No Selection", "Please select at least one entry!")
 
     def _copy_fb_links(self):
         links = []
@@ -384,15 +540,61 @@ class AgentTabWidget(QWidget):
             QApplication.clipboard().setText("\n".join(links))
             QMessageBox.information(self, "Copied", f"Copied {len(links)} Instagram profile links!")
 
+    def _copy_tiktok_links(self):
+        links = []
+        if isinstance(self.search_result, TikTokSearchResult):
+            for profile in self.search_result.profiles:
+                links.append(profile.profile_url)
+        elif self.search_result:
+            for ch in self.search_result.channels:
+                if ch.tiktok.status == SocialStatus.VERIFIED and ch.tiktok.verified_url:
+                    links.append(ch.tiktok.verified_url)
+        if links:
+            from PySide6.QtWidgets import QApplication
+
+            QApplication.clipboard().setText("\n".join(links))
+            QMessageBox.information(self, "Copied", f"Copied {len(links)} TikTok profile links!")
+
     def _export_csv(self):
-        if not self.search_result or not self.search_result.channels:
+        if not self.search_result:
+            return
+        is_tiktok_mode = isinstance(self.search_result, TikTokSearchResult)
+        if is_tiktok_mode and not self.search_result.profiles:
+            return
+        if not is_tiktok_mode and not self.search_result.channels:
             return
         path, _ = QFileDialog.getSaveFileName(
             self, "Save Agent Results CSV", "channels_social_export.csv", "CSV Files (*.csv)"
         )
-        if path:
-            with open(path, "w", newline="", encoding="utf-8") as f:
-                writer = csv.writer(f)
+        if not path:
+            return
+        with open(path, "w", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            if is_tiktok_mode:
+                writer.writerow(
+                    [
+                        "Nickname",
+                        "Handle",
+                        "Followers",
+                        "TikTok URL",
+                        "YouTube Status",
+                        "YouTube URL",
+                        "Flag",
+                    ]
+                )
+                for profile in self.search_result.profiles:
+                    writer.writerow(
+                        [
+                            profile.nickname,
+                            f"@{profile.handle}",
+                            profile.followers_formatted,
+                            profile.profile_url,
+                            profile.youtube.status.value,
+                            profile.youtube.verified_url or "",
+                            profile.opportunity_flag,
+                        ]
+                    )
+            else:
                 writer.writerow(
                     [
                         "Channel Title",
@@ -403,7 +605,10 @@ class AgentTabWidget(QWidget):
                         "Facebook URL",
                         "Instagram Status",
                         "Instagram URL",
+                        "TikTok Status",
+                        "TikTok URL",
                         "Has No Social Pages",
+                        "Flag",
                     ]
                 )
                 for ch in self.search_result.channels:
@@ -417,10 +622,13 @@ class AgentTabWidget(QWidget):
                             ch.facebook.verified_url or "",
                             ch.instagram.status.value,
                             ch.instagram.verified_url or "",
+                            ch.tiktok.status.value,
+                            ch.tiktok.verified_url or "",
                             "YES" if ch.has_no_socials else "NO",
+                            ch.opportunity_flag,
                         ]
                     )
-            QMessageBox.information(self, "Exported", f"Successfully exported to {path}!")
+        QMessageBox.information(self, "Exported", f"Successfully exported to {path}!")
 
     def _export_json(self):
         if not self.search_result:

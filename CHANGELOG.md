@@ -3,6 +3,45 @@
 All notable changes are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.1.0] — 2026-08-28
+
+### Added
+- **Cross-platform Social Matrix (AI Finder):** new *Discovery Mode* selector —
+  "YouTube → Socials (FB/IG/TikTok)" and "TikTok → YouTube (Creators Without YT)".
+- TikTok-first discovery: finds TikTok creator profiles by keyword/tag
+  (yt-dlp flat extraction with HTML `uniqueId` harvest fallback), enriches
+  follower counts/bio, then detects YouTube presence via bio links and
+  bidirectional name-similarity + backlink confirmation.
+- Creators **without a YouTube channel** are flagged `TARGET_NO_YOUTUBE`
+  (with `NEEDS_REVIEW` for inconclusive probes) and can be exported to
+  CSV/JSON, copied, or queued directly.
+- TikTok presence probing for YouTube channels (`TARGET_NO_SOCIALS` matrix
+  now covers Facebook, Instagram, and TikTok).
+- New `INCONCLUSIVE` social status surfaced in the UI (yellow "? Unconfirmed")
+  so network/rate-limit failures are never mistaken for "missing".
+
+### Fixed
+- Network errors and rate-limits no longer report socials as NOT_FOUND
+  (they are INCONCLUSIVE) — target lists stop inflating with false positives.
+- Facebook login-wall responses no longer mark real pages as missing
+  (one mobile-UA retry; ambiguous bodies are inconclusive).
+- Removed dead Instagram oEmbed fallback (endpoint deprecated by Meta).
+- Explicit bio links found in a channel's own description can no longer be
+  downgraded to NOT_FOUND by a failed probe (worst case: UNVERIFIED_HANDLE).
+- `profile.php?id=` Facebook links keep their numeric id (no more
+  query-string stripping); dead `FB_HANDLE_PATTERN` logic replaced with
+  priority-ranked matching (vanity page > profile id > people > pages > groups).
+- IG text-handle regex now word-boundary anchored with a mandatory separator
+  ("config: name" and "instagram.com/explore/" no longer produce ghost handles).
+- Zero-key yt-dlp search no longer fabricates YouTube handles from channel
+  display names (which caused false FB/IG handle probes).
+- `has_no_socials` now counts only platforms the user actually enabled.
+
+### Changed
+- Results table adapts per mode; opportunity flags, TikTok columns, and
+  YouTube-existence columns added; CSV/JSON exports extended.
+- Test suite expanded to 63 tests (100% passing); ruff clean.
+
 ## [2.0.0] — 2026-08-06
 
 ### Added
