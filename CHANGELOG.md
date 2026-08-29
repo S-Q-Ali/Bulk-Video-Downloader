@@ -17,6 +17,11 @@ All notable changes are documented here. The format follows
   CSV/JSON, copied, or queued directly.
 - TikTok presence probing for YouTube channels (`TARGET_NO_SOCIALS` matrix
   now covers Facebook, Instagram, and TikTok).
+- **TikTok mode input flexibility:** paste `@handles` / `tiktok.com/@…` URLs
+  directly (always works — no listing scraping needed), `#tag` queries now
+  hit TikTok tag pages (yt-dlp does not support search URLs), and an optional
+  **cookies.txt** file (TikTok mode "Browse…") unlocks tag/keyword listing
+  data where TikTok allows it.
 - New `INCONCLUSIVE` social status surfaced in the UI (yellow "? Unconfirmed")
   so network/rate-limit failures are never mistaken for "missing".
 
@@ -40,7 +45,14 @@ All notable changes are documented here. The format follows
 ### Changed
 - Results table adapts per mode; opportunity flags, TikTok columns, and
   YouTube-existence columns added; CSV/JSON exports extended.
-- Test suite expanded to 63 tests (100% passing); ruff clean.
+- Test suite expanded to 67 tests (100% passing); ruff clean.
+
+### Known limitation (verified 2026-08-29)
+- Anonymous TikTok **listing discovery** (keyword/`#tag` search) is blocked by
+  TikTok for logged-out visitors (empty JS shells; yt-dlp search URLs
+  unsupported, tag extractor broken upstream). Use seed profiles
+  (`@handle` / profile URLs) or a cookies.txt file. YouTube-existence
+  checking is unaffected.
 
 ## [2.0.0] — 2026-08-06
 

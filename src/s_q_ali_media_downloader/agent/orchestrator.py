@@ -194,11 +194,13 @@ class AgentOrchestrator:
         query: str,
         max_profiles: int = 30,
         only_no_youtube: bool = False,
+        cookiefile: str | None = None,
     ) -> TikTokSearchResult:
         """TikTok-first mode: find creators, flag those WITHOUT a YouTube channel."""
         start_time = time.time()
         self._emit(5, f"Initializing TikTok Agent... Searching TikTok for '{query}'...")
 
+        self.tiktok_tool.cookiefile = cookiefile
         raw_profiles = self.tiktok_tool.search_profiles(query, max_profiles=max_profiles)
         total_found = len(raw_profiles)
         self._emit(35, f"Found {total_found} TikTok profiles. Checking YouTube presence...")

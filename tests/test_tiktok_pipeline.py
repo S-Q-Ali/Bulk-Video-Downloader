@@ -165,3 +165,40 @@ def test_bidirectional_backlink_confirms_verified(monkeypatch):
     presence = tool.check_youtube_presence(_profile("bio without youtube link"))
     assert presence.status == SocialStatus.VERIFIED
     assert presence.confidence_score == 0.90
+
+# ---------------------------------------------------------------------------
+# Seed profiles (@handles / profile URLs typed directly)
+# ---------------------------------------------------------------------------
+
+
+def test_parse_seed_handles():
+    handles = TikTokSearchTool._parse_seed_handles(
+        "@movie_explains https://www.tiktok.com/@filmbreakdown @tiktok plainword"
+    )
+    assert sorted(handles) == ["filmbreakdown", "movie_explains"]
+
+
+def test_search_profiles_uses_seeds_without_discovery(monkeypatch):
+    tool = TikTokSearchTool()
+
+    def _fail(url):
+        raise AssertionError("discovery must not run when seeds are present")
+
+    monkeypatch.setattr(tool, "_discover_via_ytdlp", _fail)
+    monkeypatch.setattr(tool, "enrich_profile", lambda p: p)
+    profiles = tool.search_profiles("https://www.tiktok.com/@creator_a", max_profiles=10)
+    assert [p.handle for p in profiles] == ["creator_a"]
+    assert profiles[0].profile_url == "https://www.tiktok.com/@creator_a"
+
+
+def test_ydl_opts_includes_cookiefile_when_set():
+    tool = TikTokSearchTool(cookiefile="C:/tmp/cookies.txt")
+    opts = tool._ydl_opts(flat=True)
+    assert opts["cookiefile"] == "C:/tmp/cookies.txt"
+    assert opts["extract_flat"] is True
+
+
+def test_ydl_opts_omits_cookiefile_when_unset():
+    opts = TikTokSearchTool()._ydl_opts(flat=False)
+    assert "cookiefile" not in opts
+    assert "extract_flat" not in opts

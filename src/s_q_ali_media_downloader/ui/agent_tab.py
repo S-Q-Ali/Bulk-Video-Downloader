@@ -53,6 +53,7 @@ class AgentWorkerThread(QThread):
         only_no_youtube: bool,
         api_key: str,
         mode: str = MODE_YOUTUBE,
+        cookiefile: str | None = None,
     ):
         super().__init__()
         self.query = query
@@ -65,6 +66,7 @@ class AgentWorkerThread(QThread):
         self.only_no_youtube = only_no_youtube
         self.api_key = api_key
         self.mode = mode
+        self.cookiefile = cookiefile
 
     def run(self):
         try:
@@ -77,6 +79,7 @@ class AgentWorkerThread(QThread):
                     query=self.query,
                     max_profiles=self.max_channels,
                     only_no_youtube=self.only_no_youtube,
+                    cookiefile=self.cookiefile,
                 )
             else:
                 result = orchestrator.run_discovery(
@@ -214,6 +217,24 @@ class AgentTabWidget(QWidget):
         row3.addWidget(self.api_key_edit)
         controls_layout.addLayout(row3)
 
+        # Row 4: TikTok cookies file (optional, TikTok mode only)
+        row4 = QHBoxLayout()
+        lbl_cookies = QLabel("TikTok cookies.txt (Optional):")
+        lbl_cookies.setStyleSheet("color: #6E667E; font-size: 11px;")
+        self.cookies_edit = QLineEdit()
+        self.cookies_edit.setPlaceholderText(
+            "Paste @handles or profile URLs above, or load a cookies.txt to unlock #tag search"
+        )
+        self.btn_browse_cookies = QPushButton("Browse...")
+        self.btn_browse_cookies.clicked.connect(self._browse_cookies)
+        row4.addWidget(lbl_cookies)
+        row4.addWidget(self.cookies_edit, 1)
+        row4.addWidget(self.btn_browse_cookies)
+        # YouTube mode is the default — cookies row only shows in TikTok mode.
+        self.cookies_edit.setVisible(False)
+        self.btn_browse_cookies.setVisible(False)
+        controls_layout.addLayout(row4)
+
         main_layout.addWidget(controls_frame)
 
         # 2. Progress Banner & Status Label
@@ -280,6 +301,8 @@ class AgentTabWidget(QWidget):
         self.chk_tiktok.setVisible(not is_tiktok_mode)
         self.subs_combo.setVisible(not is_tiktok_mode)
         self.lbl_subs.setVisible(not is_tiktok_mode)
+        self.cookies_edit.setVisible(is_tiktok_mode)
+        self.btn_browse_cookies.setVisible(is_tiktok_mode)
         self.btn_copy_fb.setVisible(not is_tiktok_mode)
         self.btn_copy_ig.setVisible(not is_tiktok_mode)
         self.btn_copy_tiktok.setVisible(True)
@@ -288,6 +311,13 @@ class AgentTabWidget(QWidget):
             if is_tiktok_mode
             else "➔ Send Selected Videos to Queue"
         )
+
+    def _browse_cookies(self):
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Select TikTok cookies.txt", "", "Text Files (*.txt);;All Files (*)"
+        )
+        if path:
+            self.cookies_edit.setText(path)
 
     def _setup_table_columns(self, mode: str):
         if mode == MODE_TIKTOK:
@@ -354,6 +384,7 @@ class AgentTabWidget(QWidget):
             only_no_youtube=self.chk_no_youtube.isChecked(),
             api_key=self.api_key_edit.text().strip(),
             mode=mode,
+            cookiefile=self.cookies_edit.text().strip() or None,
         )
 
         self.worker.progress_updated.connect(self._on_progress)
